@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width,
+initial-scale=1.0,
+maximum-scale=1.0,
+user-scalable=no">
+
+<title>AMY — FIVE YEARS AFTER</title>
+
+<style>
+
+*{
+box-sizing:border-box;
+user-select:none;
+}
+
+html,body{
+margin:0;
+padding:0;
+width:100%;
+height:100%;
+overflow:hidden;
+background:#111;
+font-family:Arial,"Noto Sans HK",sans-serif;
+color:white;
+}
+
+#game{
+width:100%;
+height:100%;
+position:relative;
+overflow:hidden;
+}
+
+#startScreen{
+
+position:absolute;
+
+width:100%;
+height:100%;
+
+z-index:50;
+
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+
+text-align:center;
+
+background:
+linear-gradient(
+rgba(30,40,45,.55),
+rgba(10,15,20,.85)
+);
+
+padding:30px;
+}
+
+#startScreen h1{
+
+font-size:64px;
+letter-spacing:12px;
+margin:0;
+font-weight:300;
+
+}
+
+#startScreen h2{
+
+font-size:16px;
+letter-spacing:6px;
+margin-top:5px;
+opacity:.75;
+
+}
+
+.story{
+
+max-width:430px;
+
+line-height:1.8;
+
+margin-top:30px;
+
+opacity:.85;
+
+}
+
+.story strong{
+
+font-size:28px;
+letter-spacing:5px;
+
+}
+
+#startButton{
+
+margin-top:35px;
+
+padding:16px 45px;
+
+border:1px solid
+rgba(255,255,255,.6);
+
+background:
+rgba(0,0,0,.35);
+
+color:white;
+
+font-size:17px;
+
+letter-spacing:3px;
+
+border-radius:4px;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="game">
+
+<div id="startScreen">
+
+<h1>AMY</h1>
+
+<h2>FIVE YEARS AFTER</h2>
+
+<p>生化危機爆發後第五年</p>
+
+<div class="story">
+
+世界已經沉默五年。
+
+<br><br>
+
+Amy 收到一段來自屯門碼頭嘅神秘無線電訊號。
+
+<br><br>
+
+訊號中只有一個名字……
+
+<br><br>
+
+<strong>Daniel</strong>
+
+</div>
+
+<button id="startButton">
+開始旅程
+</button>
+
+</div>
+
+</div>
+
+<script>
+
+document
+.getElementById("startButton")
+.addEventListener("click",function(){
+
+document
+.getElementById("startScreen")
+.style.display="none";
+
+});
+
+</script>
+
+</body>
+
+</html>
