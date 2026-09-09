@@ -2985,7 +2985,7 @@ dir.y,
 0.12
 );
 
-cloudUV *= 0.45;
+cloudUV *= 0.18;
 
 cloudUV +=
 vec2(
@@ -3002,8 +3002,8 @@ cloudUV
 
 float cloudMask =
 smoothstep(
-0.54,
-0.72,
+0.42,
+0.58,
 cloud
 );
 
@@ -3034,7 +3034,7 @@ color =
 mix(
 color,
 cloudColor,
-cloudMask * 0.72
+cloudMask * 0.90
 );
 }
 
