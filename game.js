@@ -1,16 +1,49 @@
 import * as THREE from
 "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
+/* =========================================================
+AMY - FIVE YEARS AFTER
+V6
+CLEAN / STABLE / NO V45 SKY DEPENDENCY
+========================================================= */
 
-// ========================================
-// AMY — FIVE YEARS AFTER
-// TUEN MUN PIER
-// ========================================
+let scene;
+let camera;
+let renderer;
+let clock;
 
+let player;
+let started = false;
+let gameFinished = false;
 
-// ========================================
-// BASIC UI
-// ========================================
+let yaw = 0;
+let pitch = 0;
+
+const keys = {};
+
+let lastStepTime = 0;
+let storyStage = 0;
+
+let water;
+let waterPositions;
+
+let ambientLights = [];
+let animatedLights = [];
+
+let radioPlayed = false;
+let danielFound = false;
+let endingStarted = false;
+
+let audioContext = null;
+let masterGain = null;
+let oceanGain = null;
+let windGain = null;
+
+let mouseDown = false;
+let lastMouseX = 0;
+let lastMouseY = 0;
+
+const velocity = new THREE.Vector3();
 
 const startScreen =
 document.getElementById("startScreen");
@@ -18,36 +51,373 @@ document.getElementById("startScreen");
 const startButton =
 document.getElementById("startButton");
 
+/* =========================================================
+BASIC HELPERS
+========================================================= */
 
-// ========================================
-// SCENE
-// ========================================
+function addBox(
+x,
+y,
+z,
+width,
+height,
+depth,
+material,
+cast = true,
+receive = true
+) {
+const mesh =
+new THREE.Mesh(
+new THREE.BoxGeometry(
+width,
+height,
+depth
+),
+material
+);
 
-const scene =
+mesh.position.set(
+x,
+y,
+z
+);
+
+mesh.castShadow = cast;
+mesh.receiveShadow = receive;
+
+scene.add(mesh);
+
+return mesh;
+}
+
+function addCylinder(
+x,
+y,
+z,
+radiusTop,
+radiusBottom,
+height,
+material,
+radialSegments = 12
+) {
+const mesh =
+new THREE.Mesh(
+new THREE.CylinderGeometry(
+radiusTop,
+radiusBottom,
+height,
+radialSegments
+),
+material
+);
+
+mesh.position.set(
+x,
+y,
+z
+);
+
+mesh.castShadow = true;
+mesh.receiveShadow = true;
+
+scene.add(mesh);
+
+return mesh;
+}
+
+function addSphere(
+x,
+y,
+z,
+radius,
+material
+) {
+const mesh =
+new THREE.Mesh(
+new THREE.SphereGeometry(
+radius,
+16,
+12
+),
+material
+);
+
+mesh.position.set(
+x,
+y,
+z
+);
+
+mesh.castShadow = true;
+mesh.receiveShadow = true;
+
+scene.add(mesh);
+
+return mesh;
+}
+
+/* =========================================================
+MATERIALS
+========================================================= */
+
+const roadMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x25282a,
+roughness: 0.92
+});
+
+const concreteMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x777b7c,
+roughness: 0.88
+});
+
+const concreteDarkMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x4f5354,
+roughness: 0.94
+});
+
+const buildingMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x73797a,
+roughness: 0.82
+});
+
+const buildingDarkMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x454a4b,
+roughness: 0.9
+});
+
+const glassMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x18333c,
+roughness: 0.2,
+metalness: 0.35
+});
+
+const metalMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x42484a,
+roughness: 0.65,
+metalness: 0.55
+});
+
+const greenRailMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x39745f,
+roughness: 0.58,
+metalness: 0.15
+});
+
+const orangeRailMaterial =
+new THREE.MeshStandardMaterial({
+color: 0xb87842,
+roughness: 0.6,
+metalness: 0.12
+});
+
+const yellowMaterial =
+new THREE.MeshStandardMaterial({
+color: 0xd7b62e,
+roughness: 0.65
+});
+
+const whiteMaterial =
+new THREE.MeshStandardMaterial({
+color: 0xd5d5d0,
+roughness: 0.7
+});
+
+const blackMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x171919,
+roughness: 0.9
+});
+
+const treeTrunkMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x4c3c2c,
+roughness: 1
+});
+
+const leafMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x354b3a,
+roughness: 0.95
+});
+
+const waterMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x244d59,
+roughness: 0.28,
+metalness: 0.08,
+transparent: true,
+opacity: 0.91
+});
+
+/* =========================================================
+UI
+========================================================= */
+
+function createUI() {
+
+let game =
+document.getElementById("game");
+
+if (!game) {
+
+game =
+document.createElement("div");
+
+game.id = "game";
+
+game.style.position = "fixed";
+game.style.inset = "0";
+game.style.overflow = "hidden";
+game.style.background = "#182126";
+
+document.body.appendChild(game);
+}
+
+let objective =
+document.getElementById(
+"objective"
+);
+
+if (!objective) {
+
+objective =
+document.createElement("div");
+
+objective.id = "objective";
+
+objective.style.position = "fixed";
+objective.style.left = "25px";
+objective.style.top = "25px";
+objective.style.padding =
+"12px 18px";
+objective.style.background =
+"rgba(0,0,0,.55)";
+objective.style.color =
+"#ffffff";
+objective.style.font =
+"16px Arial";
+objective.style.borderRadius =
+"8px";
+objective.style.zIndex = "10";
+
+document.body.appendChild(
+objective
+);
+}
+
+let message =
+document.getElementById(
+"message"
+);
+
+if (!message) {
+
+message =
+document.createElement("div");
+
+message.id = "message";
+
+message.style.position =
+"fixed";
+
+message.style.left = "50%";
+message.style.bottom = "12%";
+
+message.style.transform =
+"translateX(-50%)";
+
+message.style.padding =
+"15px 25px";
+
+message.style.background =
+"rgba(0,0,0,.7)";
+
+message.style.color =
+"#fff";
+
+message.style.font =
+"18px Arial";
+
+message.style.borderRadius =
+"10px";
+
+message.style.opacity = "0";
+
+message.style.transition =
+"opacity .4s";
+
+message.style.zIndex = "20";
+
+document.body.appendChild(
+message
+);
+}
+
+return {
+objective,
+message
+};
+}
+
+const ui = createUI();
+
+function say(text) {
+
+ui.message.textContent =
+text;
+
+ui.message.style.opacity =
+"1";
+
+clearTimeout(
+ui.messageTimer
+);
+
+ui.messageTimer =
+setTimeout(() => {
+
+ui.message.style.opacity =
+"0";
+
+}, 4000);
+}
+
+/* =========================================================
+SCENE
+========================================================= */
+
+function initScene() {
+
+scene =
 new THREE.Scene();
 
 scene.background =
-new THREE.Color(0x8fb1c4);
+new THREE.Color(
+0x8a9aa0
+);
 
 scene.fog =
 new THREE.Fog(
-0xb8c5c7,
-18,
-110
+0x7d898d,
+35,
+180
 );
 
-
-// ========================================
-// CAMERA
-// ========================================
-
-const camera =
+camera =
 new THREE.PerspectiveCamera(
 70,
 window.innerWidth /
 window.innerHeight,
 0.1,
-250
+300
 );
 
 camera.position.set(
@@ -56,21 +426,12 @@ camera.position.set(
 8
 );
 
-
-// ========================================
-// RENDERER
-// ========================================
-
-const renderer =
+renderer =
 new THREE.WebGLRenderer({
 antialias: true,
-powerPreference: "high-performance"
+powerPreference:
+"high-performance"
 });
-
-renderer.setSize(
-window.innerWidth,
-window.innerHeight
-);
 
 renderer.setPixelRatio(
 Math.min(
@@ -79,860 +440,1043 @@ window.devicePixelRatio,
 )
 );
 
+renderer.setSize(
+window.innerWidth,
+window.innerHeight
+);
+
+renderer.shadowMap.enabled =
+true;
+
+renderer.shadowMap.type =
+THREE.PCFSoftShadowMap;
+
+renderer.outputColorSpace =
+THREE.SRGBColorSpace;
+
+renderer.toneMapping =
+THREE.ACESFilmicToneMapping;
+
+renderer.toneMappingExposure =
+1.05;
+
 renderer.domElement.style.position =
 "fixed";
 
-renderer.domElement.style.left =
+renderer.domElement.style.inset =
 "0";
-
-renderer.domElement.style.top =
-"0";
-
-renderer.domElement.style.width =
-"100%";
-
-renderer.domElement.style.height =
-"100%";
 
 renderer.domElement.style.zIndex =
 "1";
 
-document.body.appendChild(
+const game =
+document.getElementById("game");
+
+game.appendChild(
 renderer.domElement
 );
 
+clock =
+new THREE.Clock();
+}
 
-// ========================================
-// LIGHT
-// ========================================
+/* =========================================================
+LIGHTING
+========================================================= */
 
-const skyLight =
+function createLighting() {
+
+const hemi =
 new THREE.HemisphereLight(
-0xe7eeee,
-0x4e5552,
-2.4
+0xd8e1e3,
+0x343b3c,
+1.8
 );
 
-scene.add(skyLight);
+scene.add(hemi);
 
+ambientLights.push(
+hemi
+);
 
-const sunlight =
+const sun =
 new THREE.DirectionalLight(
-0xffffff,
-2.3
+0xf0e5d1,
+2.1
 );
 
-sunlight.position.set(
--25,
+sun.position.set(
+-35,
 45,
-25
+30
 );
 
-scene.add(sunlight);
+sun.castShadow = true;
 
+sun.shadow.mapSize.width =
+2048;
 
-// ========================================
-// MATERIALS
-// ========================================
+sun.shadow.mapSize.height =
+2048;
 
-const roadMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x505655,
-roughness: 0.95
-});
+sun.shadow.camera.left =
+-70;
 
+sun.shadow.camera.right =
+70;
 
-const concreteMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x747a77,
-roughness: 0.95
-});
+sun.shadow.camera.top =
+70;
 
+sun.shadow.camera.bottom =
+-70;
 
-const buildingMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x707774,
-roughness: 0.9
-});
+scene.add(sun);
 
+const seaLight =
+new THREE.DirectionalLight(
+0x9ab9c9,
+0.45
+);
 
-const metalMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x343a39,
-metalness: 0.45,
-roughness: 0.75
-});
+seaLight.position.set(
+25,
+18,
+-60
+);
 
+scene.add(
+seaLight
+);
 
-const greenMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x405445,
-roughness: 1
-});
+createStreetLight(
+-10,
+-32
+);
 
+createStreetLight(
+10,
+-48
+);
 
-const waterMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x54767b,
-roughness: 0.3,
-metalness: 0.1
-});
+createStreetLight(
+-10,
+-68
+);
 
+createStreetLight(
+10,
+-88
+);
 
-const railingMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x505654,
-metalness: 0.6,
-roughness: 0.6
-});
+createStreetLight(
+-9,
+-105
+);
+}
 
+/* =========================================================
+STREET LIGHT
+========================================================= */
 
-// ========================================
-// BOX
-// ========================================
-
-function box(
+function createStreetLight(
 x,
-y,
+z
+) {
+
+addCylinder(
+x,
+2.4,
+z,
+0.07,
+0.1,
+4.8,
+metalMaterial,
+10
+);
+
+addBox(
+x,
+4.72,
+z,
+0.6,
+0.12,
+0.25,
+blackMaterial
+);
+
+const lamp =
+new THREE.PointLight(
+0xffdca5,
+1.5,
+12
+);
+
+lamp.position.set(
+x,
+4.55,
+z
+);
+
+scene.add(lamp);
+
+animatedLights.push(
+lamp
+);
+}
+
+/* =========================================================
+GROUND / ROAD
+========================================================= */
+
+function createGround() {
+
+const ground =
+addBox(
+0,
+-0.3,
+-55,
+70,
+0.5,
+150,
+concreteDarkMaterial,
+false,
+true
+);
+
+ground.receiveShadow =
+true;
+
+addBox(
+0,
+-0.02,
+-55,
+24,
+0.08,
+125,
+roadMaterial,
+false,
+true
+);
+
+/* Road centre markings */
+
+for (
+let z = 5;
+z > -115;
+z -= 7
+) {
+
+addBox(
+0,
+0.04,
+z,
+0.15,
+0.025,
+3.2,
+yellowMaterial,
+false,
+true
+);
+}
+
+/* Sidewalks */
+
+addBox(
+-14,
+0.12,
+-55,
+4,
+0.25,
+125,
+concreteMaterial
+);
+
+addBox(
+14,
+0.12,
+-55,
+4,
+0.25,
+125,
+concreteMaterial
+);
+
+/* Kerbs */
+
+addBox(
+-12.1,
+0.22,
+-55,
+0.25,
+0.35,
+125,
+whiteMaterial
+);
+
+addBox(
+12.1,
+0.22,
+-55,
+0.25,
+0.35,
+125,
+whiteMaterial
+);
+}
+
+/* =========================================================
+BUILDINGS
+========================================================= */
+
+function createBuilding(
+x,
+z,
+width,
+height,
+depth
+) {
+
+addBox(
+x,
+height / 2,
 z,
 width,
 height,
 depth,
-material
+buildingMaterial
+);
+
+/* horizontal facade bands */
+
+for (
+let y = 3;
+y < height;
+y += 3.2
 ) {
 
-const geometry =
-new THREE.BoxGeometry(
-width,
-height,
-depth
-);
-
-const object =
-new THREE.Mesh(
-geometry,
-material
-);
-
-object.position.set(
+addBox(
 x,
 y,
-z
+z - depth / 2 - 0.03,
+width + 0.1,
+0.12,
+0.1,
+concreteDarkMaterial
 );
-
-scene.add(object);
-
-return object;
 }
 
+/* front windows */
 
-// ========================================
-// ROAD
-// ========================================
-
-box(
-0,
--0.2,
--40,
-26,
-0.4,
-110,
-roadMaterial
+const rows =
+Math.floor(
+height / 2.8
 );
 
+const columns =
+Math.max(
+3,
+Math.floor(
+width / 2.2
+)
+);
 
-// ========================================
-// SIDEWALKS
-// ========================================
+for (
+let row = 0;
+row < rows;
+row++
+) {
 
-box(
+for (
+let col = 0;
+col < columns;
+col++
+) {
+
+const wx =
+x -
+width / 2 +
+1.2 +
+col * (
+width / columns
+);
+
+const wy =
+1.6 +
+row * 2.8;
+
+addBox(
+wx,
+wy,
+z -
+depth / 2 -
+0.08,
+0.85,
+1.15,
+glassMaterial,
+false,
+false
+);
+}
+}
+
+/* AC units */
+
+for (
+let y = 2.2;
+y < height;
+y += 4.2
+) {
+
+addBox(
+x +
+width / 2 -
+0.5,
+y,
+z -
+depth / 2 -
+0.22,
+0.65,
+0.45,
+0.35,
+metalMaterial
+);
+}
+}
+
+/* =========================================================
+CITY BLOCK
+========================================================= */
+
+function createCity() {
+
+createBuilding(
+-21,
 -15,
-0,
--40,
-4,
-0.5,
-110,
-concreteMaterial
+10,
+18,
+25
 );
 
-box(
+createBuilding(
+21,
+-20,
+10,
+22,
+30
+);
+
+createBuilding(
+-21,
+20,
+11,
 15,
-0,
--40,
-4,
-0.5,
-110,
-concreteMaterial
+22
 );
 
+createBuilding(
+21,
+20,
+12,
+17,
+25
+);
 
-// ========================================
-// BUILDINGS
-// ========================================
+createBuilding(
+-22,
+52,
+13,
+20,
+24
+);
+
+createBuilding(
+22,
+52,
+13,
+18,
+26
+);
+
+createBuilding(
+-22,
+80,
+15,
+23,
+28
+);
+
+createBuilding(
+22,
+80,
+15,
+20,
+28
+);
+}
+
+/* =========================================================
+LIGHT RAIL TRACKS
+========================================================= */
+
+function createLRT() {
+
+const trackX =
+[
+-8.2,
+-5.5,
+-2.8,
+2.8,
+5.5,
+8.2
+];
 
 for (
 let i = 0;
-i < 6;
+i < trackX.length;
 i++
 ) {
 
-const z =
--5 - i * 17;
+const x =
+trackX[i];
 
-
-box(
--22,
-5,
-z,
-11,
-10,
-13,
-buildingMaterial
+addBox(
+x,
+0.17,
+-55,
+1.35,
+0.18,
+72,
+concreteMaterial
 );
 
+addBox(
+x - 0.38,
+0.31,
+-55,
+0.08,
+0.06,
+72,
+metalMaterial
+);
 
-box(
-22,
-6,
-z - 5,
-11,
-12,
-14,
-buildingMaterial
+addBox(
+x + 0.38,
+0.31,
+-55,
+0.08,
+0.06,
+72,
+metalMaterial
 );
 }
 
+/* sleepers */
 
-// ========================================
-// ABANDONED CARS
-// ========================================
+for (
+let z = -20;
+z > -92;
+z -= 2
+) {
+
+addBox(
+-8.2,
+0.28,
+z,
+1.1,
+0.08,
+0.18,
+blackMaterial
+);
+
+addBox(
+-5.5,
+0.28,
+z,
+1.1,
+0.08,
+0.18,
+blackMaterial
+);
+
+addBox(
+-2.8,
+0.28,
+z,
+1.1,
+0.08,
+0.18,
+blackMaterial
+);
+
+addBox(
+2.8,
+0.28,
+z,
+1.1,
+0.08,
+0.18,
+blackMaterial
+);
+
+addBox(
+5.5,
+0.28,
+z,
+1.1,
+0.08,
+0.18,
+blackMaterial
+);
+
+addBox(
+8.2,
+0.28,
+z,
+1.1,
+0.08,
+0.18,
+blackMaterial
+);
+}
+}
+
+/* =========================================================
+LRT STATION
+========================================================= */
+
+function createStation() {
+
+/* platforms */
+
+const platformX =
+[
+-10.2,
+-1.2,
+1.2,
+10.2
+];
+
+platformX.forEach(
+x => {
+
+addBox(
+x,
+0.55,
+-60,
+2.5,
+0.55,
+36,
+concreteMaterial
+);
+
+/* green railing */
+
+for (
+let z = -43;
+z >= -77;
+z -= 3
+) {
+
+addCylinder(
+x - 1.0,
+1.05,
+z,
+0.035,
+0.035,
+1,
+greenRailMaterial,
+8
+);
+
+addBox(
+x - 1,
+1.35,
+z,
+0.08,
+0.08,
+3,
+greenRailMaterial
+);
+}
+
+/* orange safety edge */
+
+addBox(
+x,
+0.88,
+-60,
+2.25,
+0.08,
+34,
+orangeRailMaterial
+);
+}
+);
+
+/* station roof */
+
+addBox(
+0,
+6.0,
+-60,
+23,
+0.35,
+36,
+metalMaterial
+);
+
+/* roof supports */
+
+for (
+let x = -10;
+x <= 10;
+x += 5
+) {
+
+addCylinder(
+x,
+3.15,
+-44,
+0.12,
+0.15,
+5.8,
+metalMaterial,
+10
+);
+
+addCylinder(
+x,
+3.15,
+-76,
+0.12,
+0.15,
+5.8,
+metalMaterial,
+10
+);
+}
+
+/* overhead beams */
+
+for (
+let z = -46;
+z >= -75;
+z -= 5
+) {
+
+addBox(
+0,
+5.35,
+z,
+21.5,
+0.18,
+0.2,
+metalMaterial
+);
+}
+
+/* station sign */
+
+createStationSign(
+0,
+6.65,
+-43
+);
+}
+
+/* =========================================================
+STATION SIGN
+========================================================= */
+
+function createStationSign(
+x,
+y,
+z
+) {
+
+const sign =
+addBox(
+x,
+y,
+z,
+7,
+1.4,
+0.22,
+greenRailMaterial,
+false,
+false
+);
+
+const canvas =
+document.createElement(
+"canvas"
+);
+
+canvas.width = 900;
+canvas.height = 220;
+
+const ctx =
+canvas.getContext(
+"2d"
+);
+
+ctx.fillStyle =
+"#36735e";
+
+ctx.fillRect(
+0,
+0,
+canvas.width,
+canvas.height
+);
+
+ctx.fillStyle =
+"#ffffff";
+
+ctx.font =
+"bold 70px Arial";
+
+ctx.textAlign =
+"center";
+
+ctx.fillText(
+"屯門碼頭",
+450,
+88
+);
+
+ctx.font =
+"bold 45px Arial";
+
+ctx.fillText(
+"TUEN MUN FERRY PIER",
+450,
+155
+);
+
+const texture =
+new THREE.CanvasTexture(
+canvas
+);
+
+texture.colorSpace =
+THREE.SRGBColorSpace;
+
+sign.material.map =
+texture;
+
+sign.material.needsUpdate =
+true;
+}
+
+/* =========================================================
+BUS TERMINAL
+========================================================= */
+
+function createBusTerminal() {
+
+addBox(
+17,
+0.18,
+-62,
+10,
+0.3,
+30,
+roadMaterial
+);
+
+addBox(
+17,
+3.8,
+-62,
+10,
+0.25,
+30,
+metalMaterial
+);
+
+for (
+let z = -49;
+z >= -75;
+z -= 5
+) {
+
+addCylinder(
+13,
+2,
+z,
+0.1,
+0.12,
+3.8,
+metalMaterial,
+10
+);
+
+addCylinder(
+21,
+2,
+z,
+0.1,
+0.12,
+3.8,
+metalMaterial,
+10
+);
+}
+
+addBox(
+17,
+0.6,
+-48,
+8,
+0.08,
+0.08,
+yellowMaterial
+);
+
+addBox(
+17,
+0.6,
+-75,
+8,
+0.08,
+0.08,
+yellowMaterial
+);
+}
+
+/* =========================================================
+CARS
+========================================================= */
 
 function createCar(
 x,
 z,
-rotation
+rotation = 0
 ) {
+
+const group =
+new THREE.Group();
+
+group.position.set(
+x,
+0,
+z
+);
+
+group.rotation.y =
+rotation;
+
+scene.add(group);
 
 const body =
-box(
-x,
-0.8,
-z,
-3.2,
-1.1,
-5.5,
-metalMaterial
+new THREE.Mesh(
+new THREE.BoxGeometry(
+2.1,
+0.55,
+4
+),
+blackMaterial
 );
 
-body.rotation.y =
-rotation;
+body.position.y =
+0.55;
 
+body.castShadow = true;
+
+group.add(body);
 
 const roof =
-box(
-x,
-1.5,
-z,
-2.4,
-0.7,
-2.8,
-metalMaterial
-);
-
-roof.rotation.y =
-rotation;
-}
-
-
-createCar(
--5,
--18,
-0.1
-);
-
-createCar(
-6,
--38,
--0.25
-);
-
-createCar(
--4,
--63,
-0.15
-);
-
-
-// ========================================
-// LIGHT RAIL
-// ========================================
-
-const railMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x292e2d,
-metalness: 0.75,
-roughness: 0.5
-});
-
-
-box(
--8,
-0.1,
--45,
-0.15,
-0.15,
-105,
-railMaterial
-);
-
-
-box(
--6,
-0.1,
--45,
-0.15,
-0.15,
-105,
-railMaterial
-);
-
-
-// ========================================
-// VEGETATION
-// ========================================
-
-const trees = [];
-
-
-for (
-let i = 0;
-i < 40;
-i++
-) {
-
-const side =
-Math.random() > 0.5
-? 1
-: -1;
-
-
-const x =
-side *
-(12 + Math.random() * 8);
-
-
-const z =
--Math.random() * 100;
-
-
-const trunk =
 new THREE.Mesh(
-new THREE.CylinderGeometry(
-0.15,
-0.2,
-3,
-8
-),
-greenMaterial
-);
-
-
-trunk.position.set(
-x,
-1.5,
-z
-);
-
-
-scene.add(trunk);
-
-
-const leaves =
-new THREE.Mesh(
-new THREE.SphereGeometry(
-1.3,
-8,
-8
-),
-greenMaterial
-);
-
-
-leaves.position.set(
-x,
-3.2,
-z
-);
-
-
-scene.add(leaves);
-
-
-trees.push({
-trunk,
-leaves,
-phase:
-Math.random() *
-Math.PI *
-2
-});
-}
-
-
-// ========================================
-// SEA
-// ========================================
-
-const sea =
-new THREE.Mesh(
-new THREE.PlaneGeometry(
-100,
-80
-),
-waterMaterial
-);
-
-
-sea.rotation.x =
--Math.PI / 2;
-
-
-sea.position.set(
-0,
--0.15,
--105
-);
-
-
-scene.add(sea);
-
-
-// ========================================
-// PIER
-// ========================================
-
-box(
-0,
-0.05,
--92,
-24,
-0.25,
-20,
-concreteMaterial
-);
-
-
-// ========================================
-// PIER EDGE
-// ========================================
-
-box(
-0,
-0.25,
--103,
-24,
-0.5,
-0.5,
-metalMaterial
-);
-
-
-// ========================================
-// RAILING
-// ========================================
-
-function createRailing(
-x,
-z
-) {
-
-box(
-x,
-1,
-z,
-0.12,
-2,
-4,
-railingMaterial
-);
-
-
-box(
-x,
-1.75,
-z,
-0.12,
-0.12,
-4,
-railingMaterial
-);
-
-
-box(
-x,
-1,
-z,
-0.08,
-0.08,
-4,
-railingMaterial
-);
-}
-
-
-for (
-let i = 0;
-i < 7;
-i++
-) {
-
-createRailing(
--11,
--82 - i * 3
-);
-
-
-createRailing(
-11,
--82 - i * 3
-);
-}
-
-
-// ========================================
-// PIER LIGHTS
-// ========================================
-
-function createPierLight(
-x,
-z
-) {
-
-box(
-x,
-3,
-z,
-0.15,
-6,
-0.15,
-metalMaterial
-);
-
-
-const lamp =
-new THREE.PointLight(
-0xffedc7,
-1.2,
-15
-);
-
-
-lamp.position.set(
-x,
-6,
-z
-);
-
-
-scene.add(lamp);
-}
-
-
-createPierLight(
--9,
--78
-);
-
-createPierLight(
-9,
--90
-);
-
-createPierLight(
--9,
--102
-);
-
-createPierLight(
-9,
--106
-);
-
-
-// ========================================
-// STREET SIGN
-// ========================================
-
-box(
--5,
-2.3,
--74,
-0.12,
-4.6,
-0.12,
-metalMaterial
-);
-
-
-box(
--5,
-4.3,
--74,
-3,
-0.7,
-0.12,
-metalMaterial
-);
-
-
-// ========================================
-// BINS
-// ========================================
-
-function createBin(
-x,
-z
-) {
-
-const bin =
-new THREE.Mesh(
-new THREE.CylinderGeometry(
+new THREE.BoxGeometry(
+1.65,
 0.45,
-0.4,
-1,
-12
+1.9
 ),
-metalMaterial
+glassMaterial
 );
 
+roof.position.y =
+1.0;
 
-bin.position.set(
-x,
-0.5,
-z
+roof.castShadow = true;
+
+group.add(roof);
+
+const wheelGeometry =
+new THREE.CylinderGeometry(
+0.38,
+0.38,
+0.25,
+14
 );
 
+const wheelPositions =
+[
+[-0.95, 0.42, -1.25],
+[0.95, 0.42, -1.25],
+[-0.95, 0.42, 1.25],
+[0.95, 0.42, 1.25]
+];
 
-scene.add(bin);
-}
+wheelPositions.forEach(
+p => {
 
-
-createBin(
-5,
--76
-);
-
-createBin(
--6,
--94
-);
-
-
-// ========================================
-// BUOYS
-// ========================================
-
-const buoyMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x806c5c,
-roughness: 0.7
-});
-
-
-function createBuoy(
-x,
-z
-) {
-
-const buoy =
+const wheel =
 new THREE.Mesh(
-new THREE.SphereGeometry(
-0.45,
-12,
-12
-),
-buoyMaterial
+wheelGeometry,
+blackMaterial
 );
 
+wheel.rotation.z =
+Math.PI / 2;
 
-buoy.position.set(
-x,
-0.1,
-z
+wheel.position.set(
+p[0],
+p[1],
+p[2]
 );
 
+wheel.castShadow =
+true;
 
-scene.add(buoy);
+group.add(wheel);
+}
+);
+
+const lightMaterial =
+new THREE.MeshStandardMaterial({
+color: 0xf6e5aa,
+emissive: 0xffcc66,
+emissiveIntensity: 0.5
+});
+
+addCarPart(
+group,
+-0.55,
+0.65,
+-2.03,
+0.35,
+0.16,
+0.06,
+lightMaterial
+);
+
+addCarPart(
+group,
+0.55,
+0.65,
+-2.03,
+0.35,
+0.16,
+0.06,
+lightMaterial
+);
 }
 
-
-createBuoy(
--8,
--108
-);
-
-createBuoy(
-7,
--111
-);
-
-createBuoy(
--3,
--116
-);
-
-
-// ========================================
-// ATMOSPHERIC PARTICLES
-// ========================================
-
-const particleGeometry =
-new THREE.BufferGeometry();
-
-
-const particleCount = 500;
-
-
-const particlePositions =
-new Float32Array(
-particleCount * 3
-);
-
-
-for (
-let i = 0;
-i < particleCount;
-i++
-) {
-
-particlePositions[
-i * 3
-] =
-(Math.random() - 0.5) * 45;
-
-
-particlePositions[
-i * 3 + 1
-] =
-Math.random() * 10;
-
-
-particlePositions[
-i * 3 + 2
-] =
--Math.random() * 110;
-}
-
-
-particleGeometry.setAttribute(
-"position",
-new THREE.BufferAttribute(
-particlePositions,
-3
-)
-);
-
-
-const particleMaterial =
-new THREE.PointsMaterial({
-color: 0xe1e8e6,
-size: 0.07,
-transparent: true,
-opacity: 0.3
-});
-
-
-const particles =
-new THREE.Points(
-particleGeometry,
-particleMaterial
-);
-
-
-scene.add(
-particles
-);
-
-// ============================================================
-// V5 REALISTIC TUEN MUN FERRY PIER
-// ============================================================
-
-// ============================================================
-// REALISTIC MATERIALS
-// ============================================================
-
-const v5Asphalt = new THREE.MeshStandardMaterial({
-color: 0x363b3a,
-roughness: 0.96
-});
-
-const v5Concrete = new THREE.MeshStandardMaterial({
-color: 0x747877,
-roughness: 0.92
-});
-
-const v5ConcreteDark = new THREE.MeshStandardMaterial({
-color: 0x555b5a,
-roughness: 0.95
-});
-
-const v5GreenRail = new THREE.MeshStandardMaterial({
-color: 0x245c4c,
-roughness: 0.72,
-metalness: 0.25
-});
-
-const v5OrangeRail = new THREE.MeshStandardMaterial({
-color: 0xb76532,
-roughness: 0.72,
-metalness: 0.2
-});
-
-const v5Glass = new THREE.MeshStandardMaterial({
-color: 0x26373a,
-roughness: 0.18,
-metalness: 0.35
-});
-
-const v5Building = new THREE.MeshStandardMaterial({
-color: 0x777c78,
-roughness: 0.92
-});
-
-const v5BuildingDark = new THREE.MeshStandardMaterial({
-color: 0x555b59,
-roughness: 0.95
-});
-
-const v5Window = new THREE.MeshStandardMaterial({
-color: 0x1d3035,
-roughness: 0.28,
-metalness: 0.15
-});
-
-const v5WindowLight = new THREE.MeshStandardMaterial({
-color: 0x71898d,
-roughness: 0.4,
-metalness: 0.08
-});
-
-const v5Rust = new THREE.MeshStandardMaterial({
-color: 0x66483d,
-roughness: 0.96,
-metalness: 0.25
-});
-
-const v5White = new THREE.MeshStandardMaterial({
-color: 0xd7d9d2,
-roughness: 0.82
-});
-
-
-// ============================================================
-// HELPER
-// ============================================================
-
-function v5Box(
+function addCarPart(
+group,
 x,
 y,
 z,
@@ -942,1147 +1486,1059 @@ d,
 material
 ) {
 
-const mesh = new THREE.Mesh(
-new THREE.BoxGeometry(w, h, d),
-material
-);
-
-mesh.position.set(x, y, z);
-
-scene.add(mesh);
-
-return mesh;
-}
-
-
-// ============================================================
-// ROAD REBUILD DETAILS
-// ============================================================
-
-v5Box(
-0,
-0.025,
--55,
-26,
-0.05,
-95,
-v5Asphalt
-);
-
-
-// road centre markings
-
-const v5RoadMark = new THREE.MeshStandardMaterial({
-color: 0xc8c4a7,
-roughness: 0.8
-});
-
-for (let i = 0; i < 14; i++) {
-
-v5Box(
-0,
-0.065,
--18 - i * 5,
-0.18,
-0.035,
-2.4,
-v5RoadMark
-);
-}
-
-
-// road edge markings
-
-v5Box(
--10.8,
-0.07,
--55,
-0.12,
-0.035,
-95,
-v5RoadMark
-);
-
-v5Box(
-10.8,
-0.07,
--55,
-0.12,
-0.035,
-95,
-v5RoadMark
-);
-
-
-// ============================================================
-// BUILDING FACADE DETAIL
-// ============================================================
-
-function v5BuildingFacade(
-x,
-z,
-side
-) {
-
-const wallX =
-side === "left"
-? x + 5.55
-: x - 5.55;
-
-// horizontal facade bands
-
-for (let y = 2; y < 10; y += 2.6) {
-
-v5Box(
-wallX,
-y,
-z,
-0.12,
-0.12,
-12.5,
-v5ConcreteDark
-);
-}
-
-// windows
-
-for (let row = 0; row < 4; row++) {
-
-for (let col = 0; col < 4; col++) {
-
-const wz =
-z - 4.2 + col * 2.8;
-
-const wy =
-1.8 + row * 2.2;
-
-v5Box(
-wallX +
-(side === "left" ? 0.08 : -0.08),
-wy,
-wz,
-0.10,
-1.35,
-1.65,
-Math.random() > 0.2
-? v5Window
-: v5WindowLight
-);
-}
-}
-
-// air conditioners
-
-for (let i = 0; i < 3; i++) {
-
-v5Box(
-wallX +
-(side === "left" ? 0.25 : -0.25),
-2.2 + i * 2.7,
-z + 5.0,
-0.45,
-0.5,
-0.8,
-v5ConcreteDark
-);
-}
-}
-
-
-v5BuildingFacade(-22, -5, "left");
-v5BuildingFacade(22, -10, "right");
-
-v5BuildingFacade(-22, -22, "left");
-v5BuildingFacade(22, -27, "right");
-
-v5BuildingFacade(-22, -39, "left");
-v5BuildingFacade(22, -44, "right");
-
-
-// ============================================================
-// BALCONY / EXTERNAL STRUCTURES
-// ============================================================
-
-for (const data of [
-[-16.25, -8],
-[16.25, -22],
-[-16.25, -42],
-[16.25, -50]
-]) {
-
-const x = data[0];
-const z = data[1];
-
-v5Box(
-x,
-4.2,
-z,
-0.35,
-0.12,
-8,
-v5ConcreteDark
-);
-
-v5Box(
-x,
-4.7,
-z - 3.5,
-0.12,
-1,
-0.12,
-v5ConcreteDark
-);
-
-v5Box(
-x,
-4.7,
-z + 3.5,
-0.12,
-1,
-0.12,
-v5ConcreteDark
-);
-}
-
-
-// ============================================================
-// LIGHT RAIL TERMINAL
-// ============================================================
-
-// The real Tuen Mun Ferry Pier station has multiple platforms.
-// Recreate the terminal as a wide multi-track area.
-
-const v5TrackMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x292d2d,
-metalness: 0.75,
-roughness: 0.45
-});
-
-const v5SleeperMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x56524a,
-roughness: 0.95
-});
-
-
-// tracks
-
-const v5TrackXs = [
--9,
--6,
--3,
-3,
-6,
-9
-];
-
-for (const x of v5TrackXs) {
-
-v5Box(
-x,
-0.09,
--79,
-0.14,
-0.14,
-40,
-v5TrackMaterial
-);
-
-// second rail
-
-v5Box(
-x + 1.3,
-0.09,
--79,
-0.14,
-0.14,
-40,
-v5TrackMaterial
-);
-
-// sleepers
-
-for (
-let z = -99;
-z < -59;
-z += 2
-) {
-
-v5Box(
-x + 0.65,
-0.055,
-z,
-1.8,
-0.10,
-0.18,
-v5SleeperMaterial
-);
-}
-}
-
-
-// ============================================================
-// STATION PLATFORMS
-// ============================================================
-
-const platformPositions = [
--7.4,
--1.5,
-4.5
-];
-
-for (const x of platformPositions) {
-
-v5Box(
-x,
-0.34,
--80,
-3.5,
-0.55,
-38,
-v5Concrete
-);
-
-// platform edge
-
-v5Box(
-x - 1.7,
-0.66,
--80,
-0.08,
-0.08,
-38,
-v5OrangeRail
-);
-}
-
-
-// ============================================================
-// GREEN + ORANGE STATION RAILINGS
-// ============================================================
-
-function v5StationRail(
-x,
-z,
-length
-) {
-
-v5Box(
-x,
-1.15,
-z,
-0.12,
-1.5,
-length,
-v5GreenRail
-);
-
-v5Box(
-x,
-1.8,
-z,
-0.14,
-0.14,
-length,
-v5OrangeRail
-);
-
-for (
-let p = z - length / 2;
-p <= z + length / 2;
-p += 2.5
-) {
-
-v5Box(
-x,
-0.85,
-p,
-0.13,
-1.3,
-0.13,
-v5GreenRail
-);
-}
-}
-
-
-v5StationRail(-9.2, -80, 36);
-v5StationRail(-3.2, -80, 36);
-v5StationRail(2.8, -80, 36);
-v5StationRail(8.8, -80, 36);
-
-
-// ============================================================
-// STATION CANOPY
-// ============================================================
-
-const v5CanopyRoof =
-new THREE.MeshStandardMaterial({
-color: 0x6d7776,
-roughness: 0.78,
-metalness: 0.15
-});
-
-
-// large roof beams
-
-for (const x of [-10, -4, 2, 8]) {
-
-v5Box(
-x,
-5.5,
--80,
-0.35,
-5.5,
-0.35,
-v5ConcreteDark
-);
-}
-
-
-// roof
-
-v5Box(
--1,
-6.1,
--80,
-20,
-0.35,
-35,
-v5CanopyRoof
-);
-
-
-// underside beams
-
-for (let z = -96; z <= -64; z += 4) {
-
-v5Box(
--1,
-5.85,
-z,
-20,
-0.16,
-0.18,
-v5ConcreteDark
-);
-}
-
-
-// ============================================================
-// STATION LIGHTS
-// ============================================================
-
-const v5StationLight =
-new THREE.MeshStandardMaterial({
-color: 0xfff3cf,
-emissive: 0xffe9ad,
-emissiveIntensity: 0.8
-});
-
-for (const x of [-8, -2, 4, 8]) {
-
-for (let z = -94; z <= -66; z += 7) {
-
-v5Box(
-x,
-5.85,
-z,
-0.55,
-0.08,
-0.35,
-v5StationLight
-);
-
-const light =
-new THREE.PointLight(
-0xffe8bd,
-0.65,
-8
-);
-
-light.position.set(
-x,
-5.4,
-z
-);
-
-scene.add(light);
-}
-}
-
-
-// ============================================================
-// REALISTIC STATION SIGN
-// ============================================================
-
-function v5TextSign(
-text1,
-text2,
-x,
-y,
-z,
-width
-) {
-
-const canvas =
-document.createElement("canvas");
-
-canvas.width = 1024;
-canvas.height = 256;
-
-const ctx =
-canvas.getContext("2d");
-
-ctx.fillStyle = "#07553f";
-ctx.fillRect(0, 0, 1024, 256);
-
-ctx.strokeStyle = "#d8e2d9";
-ctx.lineWidth = 10;
-ctx.strokeRect(8, 8, 1008, 240);
-
-ctx.fillStyle = "#ffffff";
-
-ctx.textAlign = "center";
-ctx.textBaseline = "middle";
-
-ctx.font =
-"bold 80px Arial";
-
-ctx.fillText(
-text1,
-512,
-100
-);
-
-ctx.font =
-"bold 42px Arial";
-
-ctx.fillText(
-text2,
-512,
-175
-);
-
-const texture =
-new THREE.CanvasTexture(canvas);
-
-texture.colorSpace =
-THREE.SRGBColorSpace;
-
-const material =
-new THREE.MeshStandardMaterial({
-map: texture,
-roughness: 0.65
-});
-
-const sign =
+const mesh =
 new THREE.Mesh(
 new THREE.BoxGeometry(
-width,
-width * 0.25,
-0.12
+w,
+h,
+d
 ),
 material
 );
 
-sign.position.set(
+mesh.position.set(
 x,
 y,
 z
 );
 
-scene.add(sign);
-
-return sign;
+group.add(mesh);
 }
 
+/* =========================================================
+TREES
+========================================================= */
 
-v5TextSign(
-"屯門碼頭",
-"TUEN MUN FERRY PIER",
+function createTree(
+x,
+z,
+scale = 1
+) {
+
+const group =
+new THREE.Group();
+
+group.position.set(
+x,
 0,
-4.5,
--61,
+z
+);
+
+group.scale.setScalar(
+scale
+);
+
+scene.add(group);
+
+const trunk =
+new THREE.Mesh(
+new THREE.CylinderGeometry(
+0.16,
+0.24,
+2.2,
 8
-);
-
-
-// ============================================================
-// FERRY PIER ENTRANCE
-// ============================================================
-
-v5Box(
-0,
-2.6,
--99,
-17,
-5.2,
-0.45,
-v5ConcreteDark
-);
-
-
-// opening in front
-
-v5Box(
-0,
-2.4,
--98.7,
-7,
-4.5,
-0.5,
-v5Glass
-);
-
-
-// ============================================================
-// FERRY / WATERFRONT STRUCTURE
-// ============================================================
-
-v5Box(
-0,
-1.0,
--104,
-23,
-2,
-1.0,
-v5ConcreteDark
-);
-
-
-// waterfront rail
-
-v5StationRail(
--10.5,
--102,
-5
-);
-
-v5StationRail(
-10.5,
--102,
-5
-);
-
-
-// ============================================================
-// BUS TERMINAL AREA
-// ============================================================
-
-const v5BusRoad =
-new THREE.MeshStandardMaterial({
-color: 0x454a49,
-roughness: 0.95
-});
-
-v5Box(
-0,
-0.06,
--43,
-23,
-0.12,
-12,
-v5BusRoad
-);
-
-
-// bus bay dividers
-
-for (let x = -8; x <= 8; x += 4) {
-
-v5Box(
-x,
-0.14,
--43,
-0.12,
-0.04,
-10,
-v5RoadMark
-);
-}
-
-
-// bus stop sign
-
-v5TextSign(
-"巴士總站",
-"BUS TERMINUS",
-0,
-3.1,
--47,
-5.5
-);
-
-
-// ============================================================
-// REALISTIC CARS
-// ============================================================
-
-function v5Car(
-x,
-z,
-rotation,
-bodyColor
-) {
-
-const bodyMaterial =
-new THREE.MeshStandardMaterial({
-color: bodyColor,
-roughness: 0.75,
-metalness: 0.25
-});
-
-const body =
-v5Box(
-x,
-0.65,
-z,
-3.2,
-0.85,
-5.1,
-bodyMaterial
-);
-
-body.rotation.y =
-rotation;
-
-const cabin =
-v5Box(
-x,
-1.25,
-z - 0.15,
-2.35,
-0.65,
-2.4,
-v5Glass
-);
-
-cabin.rotation.y =
-rotation;
-
-const wheelMat =
-new THREE.MeshStandardMaterial({
-color: 0x151719,
-roughness: 1
-});
-
-for (const wx of [-1.35, 1.35]) {
-
-for (const wz of [-1.65, 1.65]) {
-
-const wheel =
-new THREE.Mesh(
-new THREE.CylinderGeometry(
-0.38,
-0.38,
-0.22,
-16
 ),
-wheelMat
+treeTrunkMaterial
 );
 
-wheel.rotation.z =
-Math.PI / 2;
+trunk.position.y =
+1.1;
 
-wheel.position.set(
-x + wx,
-0.4,
-z + wz
-);
+trunk.castShadow =
+true;
 
-wheel.rotation.y =
-rotation;
-
-scene.add(wheel);
-}
-}
-
-// headlights
-
-const lampMat =
-new THREE.MeshStandardMaterial({
-color: 0xfff4ce,
-emissive: 0xfff1b0,
-emissiveIntensity: 0.5
-});
-
-v5Box(
-x - 0.85,
-0.75,
-z - 2.58,
-0.35,
-0.22,
-0.08,
-lampMat
-);
-
-v5Box(
-x + 0.85,
-0.75,
-z - 2.58,
-0.35,
-0.22,
-0.08,
-lampMat
-);
-}
-
-
-v5Car(
--5,
--18,
-0.08,
-0x5b6462
-);
-
-v5Car(
-6,
--38,
--0.22,
-0x465256
-);
-
-v5Car(
--5,
--57,
-0.12,
-0x62605a
-);
-
-
-// ============================================================
-// STREET FURNITURE
-// ============================================================
-
-function v5Bin(
-x,
-z
-) {
-
-v5Box(
-x,
-0.55,
-z,
-0.8,
-1.1,
-0.8,
-v5BuildingDark
-);
-
-v5Box(
-x,
-1.13,
-z,
-0.9,
-0.08,
-0.9,
-v5ConcreteDark
-);
-}
-
-
-v5Bin(-7, -51);
-v5Bin(7, -54);
-v5Bin(-5, -72);
-v5Bin(6, -91);
-
-
-// ============================================================
-// RUSTED BARRELS
-// ============================================================
-
-function v5Barrel(
-x,
-z
-) {
-
-const barrel =
-new THREE.Mesh(
-new THREE.CylinderGeometry(
-0.48,
-0.48,
-1,
-16
-),
-v5Rust
-);
-
-barrel.position.set(
-x,
-0.5,
-z
-);
-
-scene.add(barrel);
-
-for (const y of [0.22, 0.78]) {
-
-const ring =
-new THREE.Mesh(
-new THREE.TorusGeometry(
-0.48,
-0.035,
-8,
-16
-),
-v5ConcreteDark
-);
-
-ring.rotation.x =
-Math.PI / 2;
-
-ring.position.set(
-x,
-y,
-z
-);
-
-scene.add(ring);
-}
-}
-
-
-v5Barrel(-6, -62);
-v5Barrel(7, -67);
-v5Barrel(-7, -76);
-
-
-// ============================================================
-// TREES / GRASS
-// ============================================================
-
-const v5Grass =
-new THREE.MeshStandardMaterial({
-color: 0x4d5946,
-roughness: 1
-});
-
-for (let i = 0; i < 30; i++) {
-
-const side =
-Math.random() > 0.5
-? -1
-: 1;
-
-const x =
-side *
-(12.5 + Math.random() * 6);
-
-const z =
--15 -
-Math.random() * 75;
-
-const stem =
-new THREE.Mesh(
-new THREE.CylinderGeometry(
-0.10,
-0.18,
-1.8,
-7
-),
-v5Grass
-);
-
-stem.position.set(
-x,
-0.9,
-z
-);
-
-scene.add(stem);
+group.add(trunk);
 
 const crown =
 new THREE.Mesh(
 new THREE.SphereGeometry(
-0.8 + Math.random() * 0.5,
-8,
-8
+1.3,
+12,
+10
 ),
-v5Grass
+leafMaterial
 );
 
-crown.position.set(
-x,
-2,
-z
-);
+crown.position.y =
+2.7;
 
-crown.scale.y = 0.8;
+crown.castShadow =
+true;
 
-scene.add(crown);
+group.add(crown);
 }
 
+/* =========================================================
+TREES / VEGETATION
+========================================================= */
 
-// ============================================================
-// SMALL DEBRIS
-// ============================================================
+function createVegetation() {
 
-const v5Debris =
-new THREE.MeshStandardMaterial({
-color: 0x444847,
-roughness: 1
-});
+const positions =
+[
+[-16, -12],
+[16, -5],
+[-16, 10],
+[16, 18],
+[-16, 38],
+[16, 42],
+[-17, 65],
+[17, 68],
+[-15, 92],
+[15, 96],
+[-18, -35],
+[18, -40]
+];
 
-for (let i = 0; i < 45; i++) {
+positions.forEach(
+p => {
 
-const debris =
-v5Box(
--9 + Math.random() * 18,
-0.12,
--25 - Math.random() * 70,
-0.15 + Math.random() * 0.4,
-0.15 + Math.random() * 0.3,
-0.15 + Math.random() * 0.45,
-v5Debris
+createTree(
+p[0],
+p[1],
+0.8 +
+Math.random() *
+0.5
+);
+}
+);
+}
+
+/* =========================================================
+DEBRIS
+========================================================= */
+
+function createDebris() {
+
+const positions =
+[
+[-9, -25],
+[8, -31],
+[-10, -39],
+[9, -47],
+[-8, -55],
+[11, -70],
+[-9, -81],
+[8, -88],
+[-7, -96],
+[7, -103]
+];
+
+positions.forEach(
+p => {
+
+const size =
+0.2 +
+Math.random() *
+0.7;
+
+const material =
+Math.random() >
+0.5
+? metalMaterial
+: blackMaterial;
+
+const object =
+addBox(
+p[0],
+size / 2,
+p[1],
+size,
+size,
+size,
+material
 );
 
-debris.rotation.set(
+object.rotation.set(
 Math.random(),
 Math.random(),
 Math.random()
 );
 }
+);
 
+/* barrels */
 
-// ============================================================
-// WATER — REALISTIC PROCEDURAL WAVES
-// ============================================================
+for (
+let i = 0;
+i < 8;
+i++
+) {
 
-const v5WaterGeometry =
+const x =
+-9 +
+Math.random() *
+18;
+
+const z =
+-25 -
+Math.random() *
+75;
+
+addCylinder(
+x,
+0.65,
+z,
+0.48,
+0.48,
+1.3,
+metalMaterial,
+12
+);
+}
+}
+
+/* =========================================================
+WATER
+========================================================= */
+
+function createWater() {
+
+const geometry =
 new THREE.PlaneGeometry(
-180,
-100,
+110,
+70,
 80,
 40
 );
 
-const v5Water =
+geometry.rotateX(
+-Math.PI / 2
+);
+
+water =
 new THREE.Mesh(
-v5WaterGeometry,
-new THREE.MeshStandardMaterial({
-color: 0x3f737b,
-roughness: 0.22,
-metalness: 0.12
-})
+geometry,
+waterMaterial
 );
 
-v5Water.rotation.x =
--Math.PI / 2;
-
-v5Water.position.set(
+water.position.set(
 0,
--0.25,
--110
+-0.05,
+-125
 );
 
-scene.add(v5Water);
+water.receiveShadow =
+true;
 
-const v5WaterPositions =
-v5WaterGeometry.attributes.position;
+scene.add(
+water
+);
 
-const v5WaterBase = [];
+waterPositions =
+geometry.attributes
+.position.array.slice();
+}
+
+function updateWater(time) {
+
+if (!water)
+return;
+
+const pos =
+water.geometry.attributes
+.position;
 
 for (
 let i = 0;
-i < v5WaterPositions.count;
+i < pos.count;
 i++
 ) {
 
-v5WaterBase.push({
-x: v5WaterPositions.getX(i),
-y: v5WaterPositions.getY(i),
-z: v5WaterPositions.getZ(i)
-});
+const x =
+pos.getX(i);
+
+const z =
+pos.getZ(i);
+
+const y =
+Math.sin(
+x * 0.13 +
+time * 0.0008
+) * 0.09
++
+Math.sin(
+z * 0.17 +
+time * 0.0011
+) * 0.06;
+
+pos.setY(
+i,
+y
+);
 }
 
+pos.needsUpdate =
+true;
 
-// ============================================================
-// SKY / ATMOSPHERE
-// ============================================================
+water.geometry.computeVertexNormals();
+}
 
-scene.background =
-new THREE.Color(0x91b0c1);
+/* =========================================================
+PIER
+========================================================= */
 
-scene.fog =
-new THREE.Fog(
-0x91b0c1,
-65,
-185
+function createPier() {
+
+addBox(
+0,
+0.2,
+-100,
+23,
+0.4,
+30,
+concreteMaterial
 );
 
-const v5Sun =
-new THREE.DirectionalLight(
-0xfff3dc,
-1.7
+addBox(
+0,
+0.08,
+-114,
+20,
+0.12,
+2,
+orangeRailMaterial
 );
 
-v5Sun.position.set(
--45,
-65,
-35
+/* railings */
+
+for (
+let x = -10;
+x <= 10;
+x += 2
+) {
+
+addCylinder(
+x,
+1,
+-114,
+0.045,
+0.045,
+1.8,
+greenRailMaterial,
+8
+);
+}
+
+addBox(
+0,
+1.8,
+-114,
+20,
+0.08,
+0.08,
+greenRailMaterial
 );
 
-v5Sun.castShadow = true;
+/* ferry terminal canopy */
 
-scene.add(v5Sun);
-
-const v5Ambient =
-new THREE.HemisphereLight(
-0xd5e5ea,
-0x515753,
-1.45
+addBox(
+0,
+4.8,
+-101,
+16,
+0.3,
+14,
+metalMaterial
 );
 
-scene.add(v5Ambient);
+for (
+let x = -7;
+x <= 7;
+x += 7
+) {
 
+addCylinder(
+x,
+2.4,
+-95,
+0.12,
+0.15,
+4.8,
+metalMaterial,
+10
+);
 
-// ============================================================
-// CLOUDS
-// =================================================
+addCylinder(
+x,
+2.4,
+-108,
+0.12,
+0.15,
+4.8,
+metalMaterial,
+10
+);
+}
+}
 
-// ========================================
-// GAME VARIABLES
-// ========================================
+/* =========================================================
+ENVIRONMENT
+========================================================= */
 
-let started = false;
+function createEnvironment() {
 
-let chapter = 1;
+createGround();
 
-let radioFound = false;
+createCity();
 
-let danielFound = false;
+createLRT();
 
-let endingStarted = false;
+createStation();
 
-// ========================================
-// AUDIO SYSTEM
-// ========================================
+createBusTerminal();
 
-let audioContext = null;
+createPier();
 
-let masterGain = null;
+createWater();
 
-let windGain = null;
+createVegetation();
 
-let oceanGain = null;
+createDebris();
 
-let radioGain = null;
+createCar(
+-5,
+-27,
+0
+);
 
-let audioStarted = false;
+createCar(
+5,
+-35,
+Math.PI
+);
 
-let lastStepTime = 0;
+createCar(
+-5,
+-48,
+0
+);
 
+createCar(
+5,
+-83,
+Math.PI
+);
 
-// 建立遊戲聲音系統
+createCar(
+-4,
+-92,
+0
+);
+
+/* ferry lights */
+
+for (
+let i = 0;
+i < 6;
+i++
+) {
+
+const light =
+new THREE.PointLight(
+0xffc77d,
+0.9,
+9
+);
+
+light.position.set(
+-7 +
+i * 2.8,
+3.8,
+-96
+);
+
+scene.add(light);
+
+animatedLights.push(
+light
+);
+}
+}
+
+/* =========================================================
+PLAYER
+========================================================= */
+
+function createPlayer() {
+
+player =
+new THREE.Object3D();
+
+player.position.set(
+0,
+1.7,
+8
+);
+
+player.rotation.order =
+"YXZ";
+
+scene.add(
+player
+);
+
+player.add(
+camera
+);
+
+camera.position.set(
+0,
+0,
+0
+);
+
+const flashlight =
+new THREE.SpotLight(
+0xffffff,
+2.4,
+32,
+Math.PI / 7,
+0.6,
+1.2
+);
+
+flashlight.position.set(
+0,
+0,
+0
+);
+
+flashlight.target.position.set(
+0,
+0,
+-15
+);
+
+camera.add(
+flashlight
+);
+
+camera.add(
+flashlight.target
+);
+}
+
+/* =========================================================
+INPUT
+========================================================= */
+
+function setupInput() {
+
+window.addEventListener(
+"keydown",
+event => {
+
+keys[
+event.key.toLowerCase()
+] = true;
+
+}
+);
+
+window.addEventListener(
+"keyup",
+event => {
+
+keys[
+event.key.toLowerCase()
+] = false;
+
+}
+);
+
+renderer.domElement.addEventListener(
+"mousedown",
+event => {
+
+mouseDown = true;
+
+lastMouseX =
+event.clientX;
+
+lastMouseY =
+event.clientY;
+}
+);
+
+window.addEventListener(
+"mouseup",
+() => {
+
+mouseDown = false;
+
+}
+);
+
+window.addEventListener(
+"mousemove",
+event => {
+
+if (!mouseDown)
+return;
+
+const dx =
+event.clientX -
+lastMouseX;
+
+const dy =
+event.clientY -
+lastMouseY;
+
+lastMouseX =
+event.clientX;
+
+lastMouseY =
+event.clientY;
+
+yaw -=
+dx * 0.003;
+
+pitch -=
+dy * 0.0025;
+
+pitch =
+THREE.MathUtils.clamp(
+pitch,
+-1.35,
+1.35
+);
+}
+);
+
+/* Mobile touch */
+
+let touchStartX = 0;
+let touchStartY = 0;
+let touchMode = "";
+
+renderer.domElement.addEventListener(
+"touchstart",
+event => {
+
+if (
+event.touches.length !== 1
+)
+return;
+
+const touch =
+event.touches[0];
+
+touchStartX =
+touch.clientX;
+
+touchStartY =
+touch.clientY;
+
+touchMode =
+touch.clientX <
+window.innerWidth / 2
+? "move"
+: "look";
+},
+{
+passive: false
+}
+);
+
+renderer.domElement.addEventListener(
+"touchmove",
+event => {
+
+if (
+event.touches.length !== 1
+)
+return;
+
+event.preventDefault();
+
+const touch =
+event.touches[0];
+
+const dx =
+touch.clientX -
+touchStartX;
+
+const dy =
+touch.clientY -
+touchStartY;
+
+if (
+touchMode ===
+"move"
+) {
+
+keys["w"] =
+dy < -15;
+
+keys["s"] =
+dy > 15;
+
+keys["a"] =
+dx < -15;
+
+keys["d"] =
+dx > 15;
+
+} else {
+
+yaw -=
+dx * 0.002;
+
+pitch -=
+dy * 0.0018;
+
+pitch =
+THREE.MathUtils.clamp(
+pitch,
+-1.35,
+1.35
+);
+
+touchStartX =
+touch.clientX;
+
+touchStartY =
+touch.clientY;
+}
+
+},
+{
+passive: false
+}
+);
+
+renderer.domElement.addEventListener(
+"touchend",
+() => {
+
+keys["w"] = false;
+keys["s"] = false;
+keys["a"] = false;
+keys["d"] = false;
+
+}
+);
+}
+
+/* =========================================================
+PLAYER MOVEMENT
+========================================================= */
+
+function updatePlayer(delta) {
+
+if (!started)
+return;
+
+let forward = 0;
+let side = 0;
+
+if (keys["w"])
+forward += 1;
+
+if (keys["s"])
+forward -= 1;
+
+if (keys["d"])
+side += 1;
+
+if (keys["a"])
+side -= 1;
+
+const moving =
+forward !== 0 ||
+side !== 0;
+
+const speed =
+4.4;
+
+if (moving) {
+
+const direction =
+new THREE.Vector3(
+side,
+0,
+-forward
+);
+
+direction.normalize();
+
+direction.applyAxisAngle(
+new THREE.Vector3(
+0,
+1,
+0
+),
+yaw
+);
+
+player.position.x +=
+direction.x *
+speed *
+delta;
+
+player.position.z +=
+direction.z *
+speed *
+delta;
+
+player.position.x =
+THREE.MathUtils.clamp(
+player.position.x,
+-10.5,
+10.5
+);
+
+player.position.z =
+THREE.MathUtils.clamp(
+player.position.z,
+-118,
+8
+);
+
+if (
+audioContext &&
+audioContext.state ===
+"running"
+) {
+
+if (
+performance.now() -
+lastStepTime >
+450
+) {
+
+playFootstep();
+
+lastStepTime =
+performance.now();
+}
+}
+}
+
+player.rotation.y =
+yaw;
+
+camera.rotation.x =
+pitch;
+}
+
+/* =========================================================
+STORY
+========================================================= */
+
+function updateStory() {
+
+if (!started ||
+gameFinished)
+return;
+
+const z =
+player.position.z;
+
+if (
+storyStage === 0 &&
+z < -25
+) {
+
+storyStage = 1;
+
+say(
+"Amy：五年了……呢度已經完全變咗。"
+);
+
+ui.objective.textContent =
+"目標：沿住輕鐵站方向前進";
+}
+
+if (
+storyStage === 1 &&
+z < -48
+) {
+
+storyStage = 2;
+
+say(
+"遠處傳來微弱嘅無線電雜訊……"
+);
+
+playRadioStatic();
+
+ui.objective.textContent =
+"目標：尋找訊號來源";
+}
+
+if (
+storyStage === 2 &&
+z < -70
+) {
+
+storyStage = 3;
+
+say(
+"無線電：……有人嗎……如果有人聽到……"
+);
+
+ui.objective.textContent =
+"目標：前往屯門碼頭";
+}
+
+if (
+storyStage === 3 &&
+z < -94
+) {
+
+storyStage = 4;
+
+say(
+"Amy：Daniel……係你嗎？"
+);
+
+ui.objective.textContent =
+"目標：搜尋碼頭附近";
+}
+
+if (
+storyStage === 4 &&
+z < -108
+) {
+
+storyStage = 5;
+
+findDaniel();
+}
+}
+
+/* =========================================================
+DANIEL
+========================================================= */
+
+function findDaniel() {
+
+if (danielFound)
+return;
+
+danielFound =
+true;
+
+say(
+"Daniel：Amy……真係妳。"
+);
+
+setTimeout(
+() => {
+
+say(
+"Amy：我搵咗你五年。"
+);
+
+},
+3200
+);
+
+setTimeout(
+() => {
+
+say(
+"Daniel：我一直都相信妳會返嚟。"
+);
+
+},
+6800
+);
+
+setTimeout(
+startEnding,
+10500
+);
+}
+
+/* =========================================================
+ENDING
+========================================================= */
+
+function startEnding() {
+
+if (endingStarted)
+return;
+
+endingStarted =
+true;
+
+say(
+"五年後……"
+);
+
+setTimeout(
+() => {
+
+say(
+"海旁開始出現第一批倖存者建立嘅屋舍。"
+);
+
+},
+4000
+);
+
+setTimeout(
+() => {
+
+say(
+"Amy 同 Daniel 成為新社區嘅守護者。"
+);
+
+},
+8000
+);
+
+setTimeout(
+() => {
+
+say(
+"新嘅規矩、新嘅生活、新嘅希望。"
+);
+
+},
+12000
+);
+
+setTimeout(
+() => {
+
+say(
+"多年後……兩人結婚，並有咗自己嘅家庭。"
+);
+
+},
+16500
+);
+
+setTimeout(
+() => {
+
+gameFinished =
+true;
+
+ui.objective.textContent =
+"THE WORLD ENDED. WE BEGAN AGAIN.";
+
+say(
+"THE WORLD ENDED. WE BEGAN AGAIN."
+);
+
+},
+21500
+);
+}
+
+/* =========================================================
+AUDIO
+========================================================= */
 
 function startAudio() {
 
-if (audioStarted)
+if (audioContext)
 return;
-
-audioStarted = true;
 
 audioContext =
 new (
@@ -2094,222 +2550,104 @@ masterGain =
 audioContext.createGain();
 
 masterGain.gain.value =
-0.20;
+0.11;
 
 masterGain.connect(
 audioContext.destination
 );
 
+/* Ocean */
 
-// -------------------------
-// 海浪聲
-// -------------------------
+const oceanBuffer =
+createNoiseBuffer(4);
 
-const ocean =
-audioContext.createOscillator();
+const oceanSource =
+audioContext.createBufferSource();
 
-ocean.type =
-"sine";
+oceanSource.buffer =
+oceanBuffer;
 
-ocean.frequency.value =
-75;
+oceanSource.loop =
+true;
 
+const oceanFilter =
+audioContext.createBiquadFilter();
+
+oceanFilter.type =
+"lowpass";
+
+oceanFilter.frequency.value =
+850;
 
 oceanGain =
 audioContext.createGain();
 
 oceanGain.gain.value =
-0.006;
+0.018;
 
+oceanSource
+.connect(oceanFilter)
+.connect(oceanGain)
+.connect(masterGain);
 
-ocean.connect(
-oceanGain
-);
+oceanSource.start();
 
-oceanGain.connect(
-masterGain
-);
+/* Wind */
 
-ocean.start();
+const windBuffer =
+createNoiseBuffer(5);
 
+const windSource =
+audioContext.createBufferSource();
 
-// -------------------------
-// 風聲
-// -------------------------
+windSource.buffer =
+windBuffer;
 
-const wind =
-audioContext.createOscillator();
+windSource.loop =
+true;
 
-wind.type =
-"sine";
+const windFilter =
+audioContext.createBiquadFilter();
 
-wind.frequency.value =
-180;
+windFilter.type =
+"bandpass";
 
+windFilter.frequency.value =
+900;
+
+windFilter.Q.value =
+0.5;
 
 windGain =
 audioContext.createGain();
 
 windGain.gain.value =
-0.004;
+0.006;
 
+windSource
+.connect(windFilter)
+.connect(windGain)
+.connect(masterGain);
 
-wind.connect(
-windGain
-);
+windSource.start();
 
-windGain.connect(
-masterGain
-);
-
-wind.start();
-
-
-// -------------------------
-// 啟動音效
-// -------------------------
-
-const startOsc =
-audioContext.createOscillator();
-
-const startGain =
-audioContext.createGain();
-
-
-startOsc.frequency.value =
-440;
-
-startGain.gain.value =
-0.001;
-
-
-startOsc.connect(
-startGain
-);
-
-startGain.connect(
-masterGain
-);
-
-
-startOsc.start();
-
-
-startGain.gain.exponentialRampToValueAtTime(
-0.12,
-audioContext.currentTime + 0.05
-);
-
-
-startGain.gain.exponentialRampToValueAtTime(
-0.001,
-audioContext.currentTime + 1
-);
-
-
-setTimeout(
-function() {
-
-startOsc.stop();
-
-},
-1100
-);
+audioContext.resume();
 }
 
-
-// ========================================
-// FOOTSTEP SOUND
-// ========================================
-
-function footstep() {
-
-if (
-!audioStarted ||
-!audioContext
-)
-return;
-
-
-const osc =
-audioContext.createOscillator();
-
-
-const gain =
-audioContext.createGain();
-
-
-osc.type =
-"triangle";
-
-
-osc.frequency.value =
-80 +
-Math.random() * 35;
-
-
-gain.gain.value =
-0.001;
-
-
-osc.connect(
-gain
-);
-
-
-gain.connect(
-masterGain
-);
-
-
-const now =
-audioContext.currentTime;
-
-
-gain.gain.exponentialRampToValueAtTime(
-0.08,
-now + 0.01
-);
-
-
-gain.gain.exponentialRampToValueAtTime(
-0.001,
-now + 0.12
-);
-
-
-osc.start(now);
-
-osc.stop(
-now + 0.13
-);
-}
-
-
-// ========================================
-// RADIO STATIC
-// ========================================
-
-function radioStatic() {
-
-if (
-!audioStarted ||
-!audioContext
-)
-return;
-
+function createNoiseBuffer(
+seconds
+) {
 
 const buffer =
 audioContext.createBuffer(
 1,
-audioContext.sampleRate * 0.15,
+audioContext.sampleRate *
+seconds,
 audioContext.sampleRate
 );
 
-
 const data =
 buffer.getChannelData(0);
-
 
 for (
 let i = 0;
@@ -2321,955 +2659,262 @@ data[i] =
 Math.random() * 2 - 1;
 }
 
-
-const noise =
-audioContext.createBufferSource();
-
-
-noise.buffer =
-buffer;
-
-
-radioGain =
-audioContext.createGain();
-
-
-radioGain.gain.value =
-0.12;
-
-
-noise.connect(
-radioGain
-);
-
-
-radioGain.connect(
-masterGain
-);
-
-
-noise.start();
+return buffer;
 }
 
+function playFootstep() {
 
-// ========================================
-// WATERFRONT SOUND UPDATE
-// ========================================
+if (!audioContext)
+return;
+
+const osc =
+audioContext.createOscillator();
+
+const gain =
+audioContext.createGain();
+
+osc.type =
+"triangle";
+
+osc.frequency.value =
+75 +
+Math.random() * 25;
+
+gain.gain.setValueAtTime(
+0.0001,
+audioContext.currentTime
+);
+
+gain.gain.exponentialRampToValueAtTime(
+0.035,
+audioContext.currentTime +
+0.015
+);
+
+gain.gain.exponentialRampToValueAtTime(
+0.0001,
+audioContext.currentTime +
+0.11
+);
+
+osc
+.connect(gain)
+.connect(masterGain);
+
+osc.start();
+
+osc.stop(
+audioContext.currentTime +
+0.12
+);
+}
+
+function playRadioStatic() {
+
+if (!audioContext)
+return;
+
+const buffer =
+createNoiseBuffer(
+0.35
+);
+
+const source =
+audioContext.createBufferSource();
+
+const gain =
+audioContext.createGain();
+
+const filter =
+audioContext.createBiquadFilter();
+
+filter.type =
+"bandpass";
+
+filter.frequency.value =
+1400;
+
+gain.gain.value =
+0.055;
+
+source.buffer =
+buffer;
+
+source
+.connect(filter)
+.connect(gain)
+.connect(masterGain);
+
+source.start();
+}
+
+/* =========================================================
+AUDIO UPDATE
+========================================================= */
 
 function updateAudio() {
 
 if (
-!audioStarted ||
-!audioContext
+!audioContext ||
+!oceanGain ||
+!windGain
 )
 return;
 
+const z =
+player
+? player.position.z
+: 0;
 
 const distanceToSea =
-Math.abs(
-camera.position.z + 105
+Math.max(
+0,
+-95 - z
 );
-
-
-// 越接近海，海浪越大
 
 const oceanVolume =
-Math.max(
-0.025,
-Math.min(
-0.12,
-0.12 -
+THREE.MathUtils.clamp(
+0.012 +
 distanceToSea *
-0.0008
-)
+0.00035,
+0.012,
+0.028
 );
-
 
 oceanGain.gain.value =
 oceanVolume;
 
-
-// 風聲根據玩家移動稍微變化
-
-const movementAmount =
-(
+const windVolume =
+0.004 +
 Math.abs(
-camera.position.x
-) +
-Math.abs(
-camera.position.z
+Math.sin(
+performance.now() *
+0.00015
 )
-) * 0.00002;
-
+) *
+0.003;
 
 windGain.gain.value =
-0.018 +
-movementAmount;
+windVolume;
 }
 
-// ========================================
-// PLAYER CONTROL
-// ========================================
+/* =========================================================
+WATER / LIGHT ANIMATION
+========================================================= */
 
-let yaw = 0;
-
-let pitch = 0;
-
-
-const keys = {
-
-w: false,
-s: false,
-a: false,
-d: false
-};
-
-
-// ========================================
-// KEYBOARD
-// ========================================
-
-window.addEventListener(
-"keydown",
-function(event) {
-
-if (
-event.code === "KeyW"
-)
-keys.w = true;
-
-
-if (
-event.code === "KeyS"
-)
-keys.s = true;
-
-
-if (
-event.code === "KeyA"
-)
-keys.a = true;
-
-
-if (
-event.code === "KeyD"
-)
-keys.d = true;
-}
-);
-
-
-window.addEventListener(
-"keyup",
-function(event) {
-
-if (
-event.code === "KeyW"
-)
-keys.w = false;
-
-
-if (
-event.code === "KeyS"
-)
-keys.s = false;
-
-
-if (
-event.code === "KeyA"
-)
-keys.a = false;
-
-
-if (
-event.code === "KeyD"
-)
-keys.d = false;
-}
-);
-
-
-// ========================================
-// MOUSE LOOK
-// ========================================
-
-let mouseLooking = false;
-
-let mouseX = null;
-
-let mouseY = null;
-
-
-window.addEventListener(
-"mousedown",
-function(event) {
-
-if (
-event.button === 0
+function updateEnvironment(
+time
 ) {
 
-mouseLooking = true;
-
-mouseX =
-event.clientX;
-
-mouseY =
-event.clientY;
-}
-}
+updateWater(
+time
 );
 
+animatedLights.forEach(
+(light, index) => {
+
+light.intensity =
+0.75 +
+Math.sin(
+time *
+0.002 +
+index
+) *
+0.15;
+}
+);
+}
+
+/* =========================================================
+RESIZE
+========================================================= */
+
+function onResize() {
+
+camera.aspect =
+window.innerWidth /
+window.innerHeight;
+
+camera.updateProjectionMatrix();
+
+renderer.setSize(
+window.innerWidth,
+window.innerHeight
+);
+}
 
 window.addEventListener(
-"mouseup",
-function() {
-
-mouseLooking = false;
-
-mouseX = null;
-
-mouseY = null;
-}
+"resize",
+onResize
 );
 
-
-window.addEventListener(
-"mousemove",
-function(event) {
-
-if (
-!mouseLooking
-)
-return;
-
-
-const dx =
-event.clientX -
-mouseX;
-
-
-const dy =
-event.clientY -
-mouseY;
-
-
-yaw -=
-dx * 0.004;
-
-
-pitch -=
-dy * 0.003;
-
-
-pitch =
-Math.max(
--1.1,
-Math.min(
-1.1,
-pitch
-)
-);
-
-
-mouseX =
-event.clientX;
-
-mouseY =
-event.clientY;
-}
-);
-
-
-// ========================================
-// MOBILE
-// ========================================
-
-let mobileForward = false;
-
-let touchLookX = null;
-
-let touchLookY = null;
-
-
-window.addEventListener(
-"touchstart",
-function(event) {
-
-if (
-event.touches.length !== 1
-)
-return;
-
-
-const touch =
-event.touches[0];
-
-
-if (
-touch.clientX < 150
-) {
-
-mobileForward = true;
-
-} else {
-
-touchLookX =
-touch.clientX;
-
-touchLookY =
-touch.clientY;
-}
-}
-);
-
-
-window.addEventListener(
-"touchmove",
-function(event) {
-
-if (
-event.touches.length !== 1
-)
-return;
-
-
-const touch =
-event.touches[0];
-
-
-if (
-touch.clientX < 150
-)
-return;
-
-
-if (
-touchLookX !== null
-) {
-
-const dx =
-touch.clientX -
-touchLookX;
-
-
-const dy =
-touch.clientY -
-touchLookY;
-
-
-yaw -=
-dx * 0.004;
-
-
-pitch -=
-dy * 0.003;
-
-
-pitch =
-Math.max(
--1.1,
-Math.min(
-1.1,
-pitch
-)
-);
-}
-
-
-touchLookX =
-touch.clientX;
-
-
-touchLookY =
-touch.clientY;
-}
-);
-
-
-window.addEventListener(
-"touchend",
-function() {
-
-mobileForward = false;
-
-touchLookX = null;
-
-touchLookY = null;
-}
-);
-
-
-// ========================================
-// STORY TEXT
-// ========================================
-
-const storyText =
-document.createElement("div");
-
-
-storyText.style.position =
-"fixed";
-
-storyText.style.left =
-"0";
-
-storyText.style.bottom =
-"120px";
-
-storyText.style.width =
-"100%";
-
-storyText.style.textAlign =
-"center";
-
-storyText.style.color =
-"white";
-
-storyText.style.fontSize =
-"18px";
-
-storyText.style.textShadow =
-"0 2px 8px black";
-
-storyText.style.zIndex =
-"30";
-
-storyText.style.pointerEvents =
-"none";
-
-
-document.body.appendChild(
-storyText
-);
-
-
-// ========================================
-// OBJECTIVE
-// ========================================
-
-const objective =
-document.createElement("div");
-
-
-objective.style.position =
-"fixed";
-
-objective.style.top =
-"20px";
-
-objective.style.left =
-"20px";
-
-objective.style.padding =
-"10px 15px";
-
-objective.style.background =
-"rgba(0,0,0,.35)";
-
-objective.style.color =
-"white";
-
-objective.style.zIndex =
-"30";
-
-
-objective.innerText =
-"目標：探索屯門碼頭";
-
-
-document.body.appendChild(
-objective
-);
-
-
-// ========================================
-// SAY
-// ========================================
-
-function say(
-text,
-duration = 4000
-) {
-
-storyText.innerText =
-text;
-
-
-setTimeout(
-function() {
-
-storyText.innerText =
-"";
-
-},
-duration
-);
-}
-
-
-// ========================================
-// START GAME
-// ========================================
+/* =========================================================
+START BUTTON
+========================================================= */
+
+if (startButton) {
 
 startButton.addEventListener(
 "click",
-function() {
+() => {
 
-started = true;
+if (started)
+return;
 
-startAudio();
+started =
+true;
+
+if (startScreen) {
 
 startScreen.style.display =
 "none";
+}
 
+startAudio();
 
 say(
 "Amy：五年了……我終於回到屯門碼頭。"
 );
 
-
-objective.innerText =
-"目標：探索屯門碼頭";
+ui.objective.textContent =
+"目標：沿住道路前往屯門碼頭";
 }
-);
-
-
-// ========================================
-// MOVEMENT
-// ========================================
-
-function movePlayer(
-delta
-) {
-
-if (!started)
-return;
-  
-const moving =
-keys.w ||
-keys.s ||
-keys.a ||
-keys.d ||
-mobileForward;
-
-if (
-moving &&
-performance.now() - lastStepTime > 450
-) {
-
-footstep();
-
-lastStepTime =
-performance.now();
-}
-
-let forward = 0;
-
-let sideways = 0;
-
-
-if (keys.w)
-forward += 1;
-
-
-if (keys.s)
-forward -= 1;
-
-
-if (keys.a)
-sideways -= 1;
-
-
-if (keys.d)
-sideways += 1;
-
-
-if (mobileForward)
-forward += 1;
-
-
-if (
-forward === 0 &&
-sideways === 0
-)
-return;
-
-
-const direction =
-new THREE.Vector3(
-sideways,
-0,
--forward
-);
-
-
-direction.normalize();
-
-
-direction.applyAxisAngle(
-new THREE.Vector3(
-0,
-1,
-0
-),
-yaw
-);
-
-
-camera.position.add(
-direction.multiplyScalar(
-delta * 5
-)
-);
-
-
-camera.position.x =
-Math.max(
--8,
-Math.min(
-8,
-camera.position.x
-)
-);
-
-
-camera.position.z =
-Math.max(
--125,
-Math.min(
-10,
-camera.position.z
-)
 );
 }
 
-
-// ========================================
-// CAMERA
-// ========================================
-
-function updateCamera() {
-
-camera.rotation.order =
-"YXZ";
-
-
-camera.rotation.y =
-yaw;
-
-
-camera.rotation.x =
-pitch;
-}
-
-
-// ========================================
-// STORY
-// ========================================
-
-function checkStory() {
-
-if (!started)
-return;
-
-
-const z =
-camera.position.z;
-
-
-if (
-chapter === 1 &&
-z < -45 &&
-!radioFound
-) {
-
-radioFound = true;
-
-radioStatic();  
-
-objective.innerText =
-"目標：調查神秘收音機";
-
-
-say(
-"收音機：……Amy……你聽得到嗎？"
-);
-
-
-setTimeout(
-function() {
-
-say(
-"收音機：去碼頭下面……Daniel 喺等你。"
-);
-
-},
-3500
-);
-}
-
-
-if (
-chapter === 1 &&
-z < -80
-) {
-
-chapter = 2;
-
-
-objective.innerText =
-"CHAPTER 2：地下避難所";
-
-
-say(
-"Amy：Daniel……你仲生存緊？"
-);
-}
-
-
-if (
-chapter === 2 &&
-z < -110 &&
-!danielFound
-) {
-
-danielFound = true;
-
-
-objective.innerText =
-"找到 Daniel";
-
-
-say(
-"Daniel：Amy……"
-);
-
-
-setTimeout(
-function() {
-
-say(
-"Amy：Daniel……真係你？"
-);
-
-},
-3500
-);
-
-
-setTimeout(
-startEnding,
-7500
-);
-}
-}
-
-
-// ========================================
-// ENDING
-// ========================================
-
-function startEnding() {
-
-if (endingStarted)
-return;
-
-
-endingStarted = true;
-
-
-chapter = 3;
-
-
-objective.innerText =
-"CHAPTER 3：A NEW BEGINNING";
-
-
-say(
-"五年後……"
-);
-
-
-setTimeout(
-function() {
-
-say(
-"Amy 同 Daniel 開始喺海邊建立新嘅生存區。"
-);
-
-},
-4000
-);
-
-
-setTimeout(
-function() {
-
-say(
-"由兩個人，到一個社區。"
-);
-
-},
-8000
-);
-
-
-setTimeout(
-function() {
-
-say(
-"由生存，到生活。"
-);
-
-},
-12000
-);
-
-
-setTimeout(
-function() {
-
-say(
-"Year 10"
-);
-
-},
-16000
-);
-
-
-setTimeout(
-function() {
-
-say(
-"Amy 同 Daniel 結婚，並育有孩子。"
-);
-
-},
-20000
-);
-
-
-setTimeout(
-function() {
-
-say(
-"佢哋嘅孩子，喺海邊嘅新世界長大。"
-);
-
-},
-24000
-);
-
-
-setTimeout(
-function() {
-
-say(
-"世界曾經毀滅……但人類重新開始。"
-);
-
-},
-28000
-);
-
-
-setTimeout(
-function() {
-
-storyText.innerText =
-"THE WORLD ENDED. WE BEGAN AGAIN.";
-
-
-storyText.style.fontSize =
-"26px";
-
-},
-32000
-);
-}
-
-
-// ========================================
-// ENVIRONMENT ANIMATION
-// ========================================
-
-let waterTime = 0;
-
-const waterBaseY =
-sea.position.y;
-
-
-let previous =
-performance.now();
-
+/* =========================================================
+MAIN LOOP
+========================================================= */
 
 function animate() {
 
 requestAnimationFrame(
 animate
 );
-updateV45Sky();
-
-const now =
-performance.now();
-
 
 const delta =
 Math.min(
-(now - previous) / 1000,
+clock.getDelta(),
 0.05
 );
 
+const time =
+performance.now();
 
-previous =
-now;
+if (started) {
 
-
-movePlayer(
+updatePlayer(
 delta
 );
 
+updateStory();
 
-updateCamera();
+updateAudio();
 
-
-checkStory();
-
-updateAudio();  
-
-// 海面輕微上下
-
-waterTime +=
-delta;
-
-
-sea.position.y =
-waterBaseY +
-Math.sin(
-waterTime * 0.8
-) * 0.025;
-
-
-// 空氣粒子
-
-particles.rotation.y +=
-delta * 0.006;
-
-
-// 植物微微擺動
-
-for (
-const tree of trees
-) {
-
-tree.leaves.rotation.z =
-Math.sin(
-waterTime * 0.7 +
-tree.phase
-) * 0.025;
+updateEnvironment(
+time
+);
 }
-
 
 renderer.render(
 scene,
@@ -3277,33 +2922,26 @@ camera
 );
 }
 
+/* =========================================================
+INITIALIZE
+========================================================= */
 
-// ========================================
-// RESIZE
-// ========================================
+function init() {
 
-window.addEventListener(
-"resize",
-function() {
+initScene();
 
-camera.aspect =
-window.innerWidth /
-window.innerHeight;
+createLighting();
 
+createEnvironment();
 
-camera.updateProjectionMatrix();
+createPlayer();
 
+setupInput();
 
-renderer.setSize(
-window.innerWidth,
-window.innerHeight
-);
-}
-);
-
-
-// ========================================
-// START ENGINE
-// ========================================
+ui.objective.textContent =
+"按「開始遊戲」開始";
 
 animate();
+}
+
+init();
