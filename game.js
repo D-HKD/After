@@ -853,1261 +853,985 @@ scene.add(
 particles
 );
 
-// ========================================
-// TUEN MUN PIER REALISTIC DETAILS V4
-// ========================================
+// ============================================================
+// V5 REALISTIC TUEN MUN FERRY PIER
+// ============================================================
+
+// ============================================================
+// REALISTIC MATERIALS
+// ============================================================
+
+const v5Asphalt = new THREE.MeshStandardMaterial({
+color: 0x363b3a,
+roughness: 0.96
+});
+
+const v5Concrete = new THREE.MeshStandardMaterial({
+color: 0x747877,
+roughness: 0.92
+});
+
+const v5ConcreteDark = new THREE.MeshStandardMaterial({
+color: 0x555b5a,
+roughness: 0.95
+});
+
+const v5GreenRail = new THREE.MeshStandardMaterial({
+color: 0x245c4c,
+roughness: 0.72,
+metalness: 0.25
+});
+
+const v5OrangeRail = new THREE.MeshStandardMaterial({
+color: 0xb76532,
+roughness: 0.72,
+metalness: 0.2
+});
+
+const v5Glass = new THREE.MeshStandardMaterial({
+color: 0x26373a,
+roughness: 0.18,
+metalness: 0.35
+});
+
+const v5Building = new THREE.MeshStandardMaterial({
+color: 0x777c78,
+roughness: 0.92
+});
+
+const v5BuildingDark = new THREE.MeshStandardMaterial({
+color: 0x555b59,
+roughness: 0.95
+});
+
+const v5Window = new THREE.MeshStandardMaterial({
+color: 0x1d3035,
+roughness: 0.28,
+metalness: 0.15
+});
+
+const v5WindowLight = new THREE.MeshStandardMaterial({
+color: 0x71898d,
+roughness: 0.4,
+metalness: 0.08
+});
+
+const v5Rust = new THREE.MeshStandardMaterial({
+color: 0x66483d,
+roughness: 0.96,
+metalness: 0.25
+});
+
+const v5White = new THREE.MeshStandardMaterial({
+color: 0xd7d9d2,
+roughness: 0.82
+});
 
 
-// ========================================
-// BUILDING WINDOWS
-// ========================================
+// ============================================================
+// HELPER
+// ============================================================
 
-const windowMaterial =
+function v5Box(
+x,
+y,
+z,
+w,
+h,
+d,
+material
+) {
+
+const mesh = new THREE.Mesh(
+new THREE.BoxGeometry(w, h, d),
+material
+);
+
+mesh.position.set(x, y, z);
+
+scene.add(mesh);
+
+return mesh;
+}
+
+
+// ============================================================
+// ROAD REBUILD DETAILS
+// ============================================================
+
+v5Box(
+0,
+0.025,
+-55,
+26,
+0.05,
+95,
+v5Asphalt
+);
+
+
+// road centre markings
+
+const v5RoadMark = new THREE.MeshStandardMaterial({
+color: 0xc8c4a7,
+roughness: 0.8
+});
+
+for (let i = 0; i < 14; i++) {
+
+v5Box(
+0,
+0.065,
+-18 - i * 5,
+0.18,
+0.035,
+2.4,
+v5RoadMark
+);
+}
+
+
+// road edge markings
+
+v5Box(
+-10.8,
+0.07,
+-55,
+0.12,
+0.035,
+95,
+v5RoadMark
+);
+
+v5Box(
+10.8,
+0.07,
+-55,
+0.12,
+0.035,
+95,
+v5RoadMark
+);
+
+
+// ============================================================
+// BUILDING FACADE DETAIL
+// ============================================================
+
+function v5BuildingFacade(
+x,
+z,
+side
+) {
+
+const wallX =
+side === "left"
+? x + 5.55
+: x - 5.55;
+
+// horizontal facade bands
+
+for (let y = 2; y < 10; y += 2.6) {
+
+v5Box(
+wallX,
+y,
+z,
+0.12,
+0.12,
+12.5,
+v5ConcreteDark
+);
+}
+
+// windows
+
+for (let row = 0; row < 4; row++) {
+
+for (let col = 0; col < 4; col++) {
+
+const wz =
+z - 4.2 + col * 2.8;
+
+const wy =
+1.8 + row * 2.2;
+
+v5Box(
+wallX +
+(side === "left" ? 0.08 : -0.08),
+wy,
+wz,
+0.10,
+1.35,
+1.65,
+Math.random() > 0.2
+? v5Window
+: v5WindowLight
+);
+}
+}
+
+// air conditioners
+
+for (let i = 0; i < 3; i++) {
+
+v5Box(
+wallX +
+(side === "left" ? 0.25 : -0.25),
+2.2 + i * 2.7,
+z + 5.0,
+0.45,
+0.5,
+0.8,
+v5ConcreteDark
+);
+}
+}
+
+
+v5BuildingFacade(-22, -5, "left");
+v5BuildingFacade(22, -10, "right");
+
+v5BuildingFacade(-22, -22, "left");
+v5BuildingFacade(22, -27, "right");
+
+v5BuildingFacade(-22, -39, "left");
+v5BuildingFacade(22, -44, "right");
+
+
+// ============================================================
+// BALCONY / EXTERNAL STRUCTURES
+// ============================================================
+
+for (const data of [
+[-16.25, -8],
+[16.25, -22],
+[-16.25, -42],
+[16.25, -50]
+]) {
+
+const x = data[0];
+const z = data[1];
+
+v5Box(
+x,
+4.2,
+z,
+0.35,
+0.12,
+8,
+v5ConcreteDark
+);
+
+v5Box(
+x,
+4.7,
+z - 3.5,
+0.12,
+1,
+0.12,
+v5ConcreteDark
+);
+
+v5Box(
+x,
+4.7,
+z + 3.5,
+0.12,
+1,
+0.12,
+v5ConcreteDark
+);
+}
+
+
+// ============================================================
+// LIGHT RAIL TERMINAL
+// ============================================================
+
+// The real Tuen Mun Ferry Pier station has multiple platforms.
+// Recreate the terminal as a wide multi-track area.
+
+const v5TrackMaterial =
 new THREE.MeshStandardMaterial({
-color: 0x273231,
-roughness: 0.45,
+color: 0x292d2d,
+metalness: 0.75,
+roughness: 0.45
+});
+
+const v5SleeperMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x56524a,
+roughness: 0.95
+});
+
+
+// tracks
+
+const v5TrackXs = [
+-9,
+-6,
+-3,
+3,
+6,
+9
+];
+
+for (const x of v5TrackXs) {
+
+v5Box(
+x,
+0.09,
+-79,
+0.14,
+0.14,
+40,
+v5TrackMaterial
+);
+
+// second rail
+
+v5Box(
+x + 1.3,
+0.09,
+-79,
+0.14,
+0.14,
+40,
+v5TrackMaterial
+);
+
+// sleepers
+
+for (
+let z = -99;
+z < -59;
+z += 2
+) {
+
+v5Box(
+x + 0.65,
+0.055,
+z,
+1.8,
+0.10,
+0.18,
+v5SleeperMaterial
+);
+}
+}
+
+
+// ============================================================
+// STATION PLATFORMS
+// ============================================================
+
+const platformPositions = [
+-7.4,
+-1.5,
+4.5
+];
+
+for (const x of platformPositions) {
+
+v5Box(
+x,
+0.34,
+-80,
+3.5,
+0.55,
+38,
+v5Concrete
+);
+
+// platform edge
+
+v5Box(
+x - 1.7,
+0.66,
+-80,
+0.08,
+0.08,
+38,
+v5OrangeRail
+);
+}
+
+
+// ============================================================
+// GREEN + ORANGE STATION RAILINGS
+// ============================================================
+
+function v5StationRail(
+x,
+z,
+length
+) {
+
+v5Box(
+x,
+1.15,
+z,
+0.12,
+1.5,
+length,
+v5GreenRail
+);
+
+v5Box(
+x,
+1.8,
+z,
+0.14,
+0.14,
+length,
+v5OrangeRail
+);
+
+for (
+let p = z - length / 2;
+p <= z + length / 2;
+p += 2.5
+) {
+
+v5Box(
+x,
+0.85,
+p,
+0.13,
+1.3,
+0.13,
+v5GreenRail
+);
+}
+}
+
+
+v5StationRail(-9.2, -80, 36);
+v5StationRail(-3.2, -80, 36);
+v5StationRail(2.8, -80, 36);
+v5StationRail(8.8, -80, 36);
+
+
+// ============================================================
+// STATION CANOPY
+// ============================================================
+
+const v5CanopyRoof =
+new THREE.MeshStandardMaterial({
+color: 0x6d7776,
+roughness: 0.78,
 metalness: 0.15
 });
 
 
-const brokenWindowMaterial =
+// large roof beams
+
+for (const x of [-10, -4, 2, 8]) {
+
+v5Box(
+x,
+5.5,
+-80,
+0.35,
+5.5,
+0.35,
+v5ConcreteDark
+);
+}
+
+
+// roof
+
+v5Box(
+-1,
+6.1,
+-80,
+20,
+0.35,
+35,
+v5CanopyRoof
+);
+
+
+// underside beams
+
+for (let z = -96; z <= -64; z += 4) {
+
+v5Box(
+-1,
+5.85,
+z,
+20,
+0.16,
+0.18,
+v5ConcreteDark
+);
+}
+
+
+// ============================================================
+// STATION LIGHTS
+// ============================================================
+
+const v5StationLight =
 new THREE.MeshStandardMaterial({
-color: 0x4b5552,
-roughness: 0.8
+color: 0xfff3cf,
+emissive: 0xffe9ad,
+emissiveIntensity: 0.8
 });
 
+for (const x of [-8, -2, 4, 8]) {
 
-function createBuildingWindows(
+for (let z = -94; z <= -66; z += 7) {
+
+v5Box(
+x,
+5.85,
+z,
+0.55,
+0.08,
+0.35,
+v5StationLight
+);
+
+const light =
+new THREE.PointLight(
+0xffe8bd,
+0.65,
+8
+);
+
+light.position.set(
+x,
+5.4,
+z
+);
+
+scene.add(light);
+}
+}
+
+
+// ============================================================
+// REALISTIC STATION SIGN
+// ============================================================
+
+function v5TextSign(
+text1,
+text2,
 x,
 y,
 z,
-width,
-height,
-depth
+width
 ) {
 
-const rows = 5;
-const columns = 3;
-
-const windowWidth =
-1.3;
-
-const windowHeight =
-1.4;
-
-
-for (
-let row = 0;
-row < rows;
-row++
-) {
-
-for (
-let col = 0;
-col < columns;
-col++
-) {
-
-const wx =
-x -
-width / 2 +
-2 +
-col * 3;
-
-
-const wy =
-y -
-height / 2 +
-2 +
-row * 2;
-
-
-const window =
-box(
-wx,
-wy,
-z -
-depth / 2 -
-0.03,
-windowWidth,
-windowHeight,
-0.05,
-Math.random() > 0.18
-? windowMaterial
-: brokenWindowMaterial
-);
-
-
-window.userData.window =
-true;
-}
-}
-}
-
-
-// ========================================
-// WINDOWS ON BUILDINGS
-// ========================================
-
-createBuildingWindows(
--22,
-5,
--5,
-11,
-10,
-13
-);
-
-
-createBuildingWindows(
-22,
-6,
--10,
-11,
-12,
-14
-);
-
-
-createBuildingWindows(
--22,
-5,
--22,
-11,
-10,
-13
-);
-
-
-createBuildingWindows(
-22,
-6,
--27,
-11,
-12,
-14
-);
-
-
-createBuildingWindows(
--22,
-5,
--39,
-11,
-10,
-13
-);
-
-
-createBuildingWindows(
-22,
-6,
--44,
-11,
-12,
-14
-);
-
-
-// ========================================
-// ROAD MARKINGS
-// ========================================
-
-const roadLineMaterial =
-new THREE.MeshBasicMaterial({
-color: 0xd6d0b2
-});
-
-
-for (
-let i = 0;
-i < 15;
-i++
-) {
-
-box(
-0,
-0.015,
--5 - i * 7,
-0.25,
-0.025,
-3.5,
-roadLineMaterial
-);
-}
-
-
-// ========================================
-// ROAD EDGE LINES
-// ========================================
-
-box(
--10,
-0.018,
--40,
-0.15,
-0.025,
-105,
-roadLineMaterial
-);
-
-
-box(
-10,
-0.018,
--40,
-0.15,
-0.025,
-105,
-roadLineMaterial
-);
-
-
-// ========================================
-// PIER SAFETY BARRIERS
-// ========================================
-
-const barrierMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x6b706d,
-metalness: 0.65,
-roughness: 0.55
-});
-
-
-function createBarrier(
-x,
-z
-) {
-
-box(
-x,
-0.7,
-z,
-0.18,
-1.4,
-2.5,
-barrierMaterial
-);
-
-
-box(
-x,
-1.3,
-z,
-0.18,
-0.12,
-2.5,
-barrierMaterial
-);
-}
-
-
-for (
-let i = 0;
-i < 8;
-i++
-) {
-
-createBarrier(
--11,
--82 - i * 2.5
-);
-
-createBarrier(
-11,
--82 - i * 2.5
-);
-}
-
-
-// ========================================
-// TUEN MUN PIER SIGN
-// ========================================
-
-const signCanvas =
+const canvas =
 document.createElement("canvas");
 
+canvas.width = 1024;
+canvas.height = 256;
 
-signCanvas.width = 1024;
+const ctx =
+canvas.getContext("2d");
 
-signCanvas.height = 256;
+ctx.fillStyle = "#07553f";
+ctx.fillRect(0, 0, 1024, 256);
 
+ctx.strokeStyle = "#d8e2d9";
+ctx.lineWidth = 10;
+ctx.strokeRect(8, 8, 1008, 240);
 
-const signContext =
-signCanvas.getContext("2d");
+ctx.fillStyle = "#ffffff";
 
+ctx.textAlign = "center";
+ctx.textBaseline = "middle";
 
-signContext.fillStyle =
-"#263331";
+ctx.font =
+"bold 80px Arial";
 
-
-signContext.fillRect(
-0,
-0,
-1024,
-256
-);
-
-
-signContext.fillStyle =
-"#f0ead1";
-
-
-signContext.font =
-"bold 92px sans-serif";
-
-
-signContext.textAlign =
-"center";
-
-
-signContext.textBaseline =
-"middle";
-
-
-signContext.fillText(
-"屯門碼頭",
+ctx.fillText(
+text1,
 512,
-115
+100
 );
 
-
-signContext.font =
-"bold 42px sans-serif";
-
-
-signContext.fillText(
-"TUEN MUN PIER",
-512,
-190
-);
-
-
-const signTexture =
-new THREE.CanvasTexture(
-signCanvas
-);
-
-
-const signMaterial =
-new THREE.MeshStandardMaterial({
-map: signTexture,
-roughness: 0.65
-});
-
-
-const pierSign =
-new THREE.Mesh(
-new THREE.BoxGeometry(
-5.5,
-1.6,
-0.15
-),
-signMaterial
-);
-
-
-pierSign.position.set(
-0,
-4.2,
--76
-);
-
-
-scene.add(
-pierSign
-);
-
-
-// ========================================
-// SIGN SUPPORT
-// ========================================
-
-box(
--2.3,
-2.1,
--76,
-0.2,
-4.2,
-0.2,
-metalMaterial
-);
-
-
-box(
-2.3,
-2.1,
--76,
-0.2,
-4.2,
-0.2,
-metalMaterial
-);
-
-
-// ========================================
-// PIER INDUSTRIAL CONTAINERS
-// ========================================
-
-const containerMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x505754,
-roughness: 0.9
-});
-
-
-function createContainer(
-x,
-z,
-rotation
-) {
-
-const container =
-box(
-x,
-1.2,
-z,
-4.5,
-2.4,
-9,
-containerMaterial
-);
-
-
-container.rotation.y =
-rotation;
-
-
-// Container vertical ribs
-
-for (
-let i = -3;
-i <= 3;
-i++
-) {
-
-const rib =
-box(
-x,
-1.2,
-z +
-i * 1.1,
-0.08,
-2.5,
-0.08,
-metalMaterial
-);
-
-
-rib.rotation.y =
-rotation;
-}
-}
-
-
-createContainer(
--7,
--65,
-0.05
-);
-
-
-createContainer(
-7,
--69,
--0.08
-);
-
-
-// ========================================
-// WHEEL / RUBBER DEBRIS
-// ========================================
-
-const rubberMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x202523,
-roughness: 1
-});
-
-
-function createTire(
-x,
-z
-) {
-
-const tire =
-new THREE.Mesh(
-new THREE.TorusGeometry(
-0.55,
-0.2,
-10,
-18
-),
-rubberMaterial
-);
-
-
-tire.rotation.x =
-Math.PI / 2;
-
-
-tire.position.set(
-x,
-0.55,
-z
-);
-
-
-scene.add(
-tire
-);
-}
-
-
-createTire(
--3,
--71
-);
-
-
-createTire(
-4,
--91
-);
-
-
-// ========================================
-// PIER WARNING STRIP
-// ========================================
-
-const warningMaterial =
-new THREE.MeshBasicMaterial({
-color: 0xb49b52
-});
-
-
-box(
-0,
-0.32,
--101.5,
-23,
-0.04,
-0.25,
-warningMaterial
-);
-
-
-// ========================================
-// SEA WALL
-// ========================================
-
-const seaWallMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x626866,
-roughness: 1
-});
-
-
-box(
-0,
-0.8,
--104,
-24,
-1.6,
-1.2,
-seaWallMaterial
-);
-
-
-// ========================================
-// EXTRA VEGETATION
-// ========================================
-
-for (
-let i = 0;
-i < 25;
-i++
-) {
-
-const side =
-Math.random() > 0.5
-? -1
-: 1;
-
-
-const x =
-side *
-(
-12 +
-Math.random() * 6
-);
-
-
-const z =
--20 -
-Math.random() * 75;
-
-
-const bush =
-new THREE.Mesh(
-new THREE.SphereGeometry(
-0.7 +
-Math.random() * 0.7,
-8,
-8
-),
-greenMaterial
-);
-
-
-bush.scale.y =
-0.7;
-
-
-bush.position.set(
-x,
-0.7,
-z
-);
-
-
-scene.add(
-bush
-);
-}
-
-
-// ========================================
-// SMALL STREET LIGHT HEADS
-// ========================================
-
-const lampHeadMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x252b2a,
-metalness: 0.5,
-roughness: 0.5
-});
-
-
-function createLampHead(
-x,
-z
-) {
-
-box(
-x,
-6,
-z,
-0.7,
-0.2,
-0.35,
-lampHeadMaterial
-);
-}
-
-
-createLampHead(
--9,
--78
-);
-
-
-createLampHead(
-9,
--90
-);
-
-
-createLampHead(
--9,
--102
-);
-
-
-createLampHead(
-9,
--106
-);
-
-// ================================
-// V4.1 VISIBILITY FIX
-// ================================
-
-// ---------- Road-facing windows ----------
-function addV4FixWindows(x, z, side) {
-
-const windowMat = new THREE.MeshStandardMaterial({
-color: 0x8fa0aa,
-roughness: 0.65,
-metalness: 0.05
-});
-
-const frameMat = new THREE.MeshStandardMaterial({
-color: 0x30383c,
-roughness: 0.8
-});
-
-for (let row = 0; row < 3; row++) {
-
-for (let col = 0; col < 4; col++) {
-
-const y = 2.5 + row * 2.2;
-const zPos = z - 4.2 + col * 2.8;
-
-const window = box(
-0.10,
-1.35,
-1.65,
-windowMat
-);
-
-window.position.set(
-side === "left" ? x + 0.05 : x - 0.05,
-y,
-zPos
-);
-
-scene.add(window);
-
-// window frame vertical
-const frame = box(
-0.12,
-1.5,
-0.08,
-frameMat
-);
-
-frame.position.set(
-side === "left" ? x + 0.10 : x - 0.10,
-y,
-zPos
-);
-
-scene.add(frame);
-}
-}
-}
-
-
-// ---------- Large Tuen Mun Pier sign ----------
-const v4fixSignCanvas = document.createElement("canvas");
-v4fixSignCanvas.width = 1024;
-v4fixSignCanvas.height = 256;
-
-const v4fixCtx = v4fixSignCanvas.getContext("2d");
-
-v4fixCtx.fillStyle = "#25343b";
-v4fixCtx.fillRect(0, 0, 1024, 256);
-
-v4fixCtx.strokeStyle = "#d7e0df";
-v4fixCtx.lineWidth = 12;
-v4fixCtx.strokeRect(8, 8, 1008, 240);
-
-v4fixCtx.fillStyle = "#ffffff";
-v4fixCtx.font = "bold 88px Arial";
-v4fixCtx.textAlign = "center";
-v4fixCtx.textBaseline = "middle";
-
-v4fixCtx.fillText(
-"屯門碼頭",
-512,
-105
-);
-
-v4fixCtx.font = "bold 42px Arial";
-
-v4fixCtx.fillText(
-"TUEN MUN PIER",
+ctx.font =
+"bold 42px Arial";
+
+ctx.fillText(
+text2,
 512,
 175
 );
 
-const v4fixSignTexture =
-new THREE.CanvasTexture(v4fixSignCanvas);
+const texture =
+new THREE.CanvasTexture(canvas);
 
-const v4fixSignMaterial =
+texture.colorSpace =
+THREE.SRGBColorSpace;
+
+const material =
 new THREE.MeshStandardMaterial({
-map: v4fixSignTexture,
-roughness: 0.7,
-metalness: 0.05
+map: texture,
+roughness: 0.65
 });
 
-const v4fixSign = new THREE.Mesh(
-new THREE.BoxGeometry(9, 2.25, 0.18),
-v4fixSignMaterial
-);
-
-v4fixSign.position.set(
-0,
-5.0,
--52
-);
-
-scene.add(v4fixSign);
-
-
-// ---------- Sign supports ----------
-const v4fixSupportMat =
-new THREE.MeshStandardMaterial({
-color: 0x42494b,
-roughness: 0.85,
-metalness: 0.25
-});
-
-for (const x of [-3.4, 3.4]) {
-
-const support = box(
-0.28,
-5.0,
-0.28,
-v4fixSupportMat
-);
-
-support.position.set(
-x,
-2.5,
--52
-);
-
-scene.add(support);
-}
-
-
-// ---------- Large shipping containers ----------
-const v4fixContainerRed =
-new THREE.MeshStandardMaterial({
-color: 0x6e4038,
-roughness: 0.9,
-metalness: 0.15
-});
-
-const v4fixContainerBlue =
-new THREE.MeshStandardMaterial({
-color: 0x465c64,
-roughness: 0.9,
-metalness: 0.15
-});
-
-const v4fixContainer1 = box(
-5.5,
-2.7,
-2.4,
-v4fixContainerRed
-);
-
-v4fixContainer1.position.set(
--7.0,
-1.35,
--62
-);
-
-scene.add(v4fixContainer1);
-
-
-const v4fixContainer2 = box(
-5.5,
-2.7,
-2.4,
-v4fixContainerBlue
-);
-
-v4fixContainer2.position.set(
-7.0,
-1.35,
--66
-);
-
-scene.add(v4fixContainer2);
-
-
-// ---------- Container vertical lines ----------
-const v4fixContainerLineMat =
-new THREE.MeshStandardMaterial({
-color: 0x242a2c,
-roughness: 0.9
-});
-
-for (const x of [-9.0, -7.0, -5.0, 5.0, 7.0, 9.0]) {
-
-const line = box(
-0.08,
-2.5,
-0.08,
-v4fixContainerLineMat
-);
-
-line.position.set(
-x,
-1.35,
--60.75
-);
-
-scene.add(line);
-}
-
-
-// ---------- Large abandoned tyres ----------
-const v4fixTyreMat =
-new THREE.MeshStandardMaterial({
-color: 0x17191a,
-roughness: 1.0
-});
-
-function addV4FixTyre(x, z) {
-
-const tyre = new THREE.Mesh(
-new THREE.TorusGeometry(
-0.72,
-0.24,
-12,
-24
+const sign =
+new THREE.Mesh(
+new THREE.BoxGeometry(
+width,
+width * 0.25,
+0.12
 ),
-v4fixTyreMat
+material
 );
 
-tyre.rotation.x = Math.PI / 2;
-
-tyre.position.set(
+sign.position.set(
 x,
-0.72,
+y,
 z
 );
 
-scene.add(tyre);
-}
+scene.add(sign);
 
-addV4FixTyre(-4.5, -57);
-addV4FixTyre(4.5, -58);
-addV4FixTyre(-5.5, -69);
-
-
-// ---------- Pier safety railings ----------
-const v4fixRailMat =
-new THREE.MeshStandardMaterial({
-color: 0x667073,
-roughness: 0.75,
-metalness: 0.45
-});
-
-for (const x of [-10.5, 10.5]) {
-
-for (let i = 0; i < 7; i++) {
-
-const post = box(
-0.12,
-1.25,
-0.12,
-v4fixRailMat
-);
-
-post.position.set(
-x,
-0.65,
--50 - i * 3
-);
-
-scene.add(post);
-}
-
-const rail = box(
-0.16,
-0.16,
-21,
-v4fixRailMat
-);
-
-rail.position.set(
-x,
-1.15,
--59
-);
-
-scene.add(rail);
+return sign;
 }
 
 
-// ---------- Road lane markings ----------
-const v4fixRoadMarkMat =
-new THREE.MeshStandardMaterial({
-color: 0xd8d5c8,
-roughness: 0.8
-});
-
-for (let i = 0; i < 12; i++) {
-
-const mark = box(
-0.22,
-0.025,
-2.0,
-v4fixRoadMarkMat
-);
-
-mark.position.set(
+v5TextSign(
+"屯門碼頭",
+"TUEN MUN FERRY PIER",
 0,
-0.03,
--30 - i * 4
+4.5,
+-61,
+8
 );
 
-scene.add(mark);
-}
+
+// ============================================================
+// FERRY PIER ENTRANCE
+// ============================================================
+
+v5Box(
+0,
+2.6,
+-99,
+17,
+5.2,
+0.45,
+v5ConcreteDark
+);
 
 
-// ---------- Warning blocks near pier ----------
-const v4fixWarningMat =
+// opening in front
+
+v5Box(
+0,
+2.4,
+-98.7,
+7,
+4.5,
+0.5,
+v5Glass
+);
+
+
+// ============================================================
+// FERRY / WATERFRONT STRUCTURE
+// ============================================================
+
+v5Box(
+0,
+1.0,
+-104,
+23,
+2,
+1.0,
+v5ConcreteDark
+);
+
+
+// waterfront rail
+
+v5StationRail(
+-10.5,
+-102,
+5
+);
+
+v5StationRail(
+10.5,
+-102,
+5
+);
+
+
+// ============================================================
+// BUS TERMINAL AREA
+// ============================================================
+
+const v5BusRoad =
 new THREE.MeshStandardMaterial({
-color: 0xb18b42,
-roughness: 0.8
-});
-
-for (let i = 0; i < 8; i++) {
-
-const warning = box(
-0.7,
-0.12,
-0.35,
-v4fixWarningMat
-);
-
-warning.position.set(
--5.0 + i * 1.4,
-0.08,
--74
-);
-
-scene.add(warning);
-}
-
-
-// ---------- Road-facing building windows ----------
-addV4FixWindows(-16.5, -30, "left");
-addV4FixWindows(16.5, -30, "right");
-
-addV4FixWindows(-16.5, -58, "left");
-addV4FixWindows(16.5, -58, "right");
-
-
-// ---------- Extra pier lights ----------
-const v4fixLampMat =
-new THREE.MeshStandardMaterial({
-color: 0x303638,
-roughness: 0.8,
-metalness: 0.35
-});
-
-for (const x of [-8, 8]) {
-
-const pole = box(
-0.18,
-4.2,
-0.18,
-v4fixLampMat
-);
-
-pole.position.set(
-x,
-2.1,
--48
-);
-
-scene.add(pole);
-
-const lamp = new THREE.Mesh(
-new THREE.SphereGeometry(
-0.28,
-12,
-12
-),
-new THREE.MeshStandardMaterial({
-color: 0xd9d1a2,
-emissive: 0x665f42,
-emissiveIntensity: 0.8
-})
-);
-
-lamp.position.set(
-x,
-4.3,
--48
-);
-
-scene.add(lamp);
-}
-
-
-// ================================
-// END V4.1 VISIBILITY FIX
-// ================================
-
-// ================================
-// V4.2 ENVIRONMENT DETAIL
-// ================================
-
-// ---------- Broken road patches ----------
-const v42BrokenRoadMat = new THREE.MeshStandardMaterial({
-color: 0x55585a,
-roughness: 1.0
-});
-
-for (let i = 0; i < 10; i++) {
-
-const patch = box(
-1.2 + Math.random() * 1.8,
-0.025,
-0.35 + Math.random() * 0.5,
-v42BrokenRoadMat
-);
-
-patch.position.set(
--8 + Math.random() * 16,
-0.035,
--38 - i * 5
-);
-
-patch.rotation.y =
-(Math.random() - 0.5) * 0.5;
-
-scene.add(patch);
-}
-
-
-// ---------- Roadside concrete blocks ----------
-const v42ConcreteMat = new THREE.MeshStandardMaterial({
-color: 0x686b6b,
+color: 0x454a49,
 roughness: 0.95
 });
 
-for (const x of [-8.5, 8.5]) {
+v5Box(
+0,
+0.06,
+-43,
+23,
+0.12,
+12,
+v5BusRoad
+);
 
-for (let i = 0; i < 4; i++) {
 
-const block = box(
-1.2,
+// bus bay dividers
+
+for (let x = -8; x <= 8; x += 4) {
+
+v5Box(
+x,
+0.14,
+-43,
+0.12,
+0.04,
+10,
+v5RoadMark
+);
+}
+
+
+// bus stop sign
+
+v5TextSign(
+"巴士總站",
+"BUS TERMINUS",
+0,
+3.1,
+-47,
+5.5
+);
+
+
+// ============================================================
+// REALISTIC CARS
+// ============================================================
+
+function v5Car(
+x,
+z,
+rotation,
+bodyColor
+) {
+
+const bodyMaterial =
+new THREE.MeshStandardMaterial({
+color: bodyColor,
+roughness: 0.75,
+metalness: 0.25
+});
+
+const body =
+v5Box(
+x,
 0.65,
-0.7,
-v42ConcreteMat
+z,
+3.2,
+0.85,
+5.1,
+bodyMaterial
 );
 
-block.position.set(
+body.rotation.y =
+rotation;
+
+const cabin =
+v5Box(
 x,
-0.325,
--48 - i * 7
+1.25,
+z - 0.15,
+2.35,
+0.65,
+2.4,
+v5Glass
 );
 
-block.rotation.y =
-(Math.random() - 0.5) * 0.25;
+cabin.rotation.y =
+rotation;
 
-scene.add(block);
-}
-}
-
-
-// ---------- Abandoned metal barriers ----------
-const v42BarrierMat = new THREE.MeshStandardMaterial({
-color: 0x4c5355,
-roughness: 0.85,
-metalness: 0.4
+const wheelMat =
+new THREE.MeshStandardMaterial({
+color: 0x151719,
+roughness: 1
 });
 
-function addV42Barrier(x, z) {
+for (const wx of [-1.35, 1.35]) {
 
-const top = box(
-0.12,
-0.12,
-3.0,
-v42BarrierMat
-);
+for (const wz of [-1.65, 1.65]) {
 
-top.position.set(
-x,
-1.05,
-z
-);
-
-scene.add(top);
-
-const post1 = box(
-0.14,
-1.1,
-0.14,
-v42BarrierMat
-);
-
-post1.position.set(
-x,
-0.55,
-z - 1.4
-);
-
-scene.add(post1);
-
-const post2 = box(
-0.14,
-1.1,
-0.14,
-v42BarrierMat
-);
-
-post2.position.set(
-x,
-0.55,
-z + 1.4
-);
-
-scene.add(post2);
-}
-
-addV42Barrier(-5.5, -46);
-addV42Barrier(5.5, -53);
-addV42Barrier(-6.0, -72);
-
-
-// ---------- Rusted barrels ----------
-const v42BarrelMat = new THREE.MeshStandardMaterial({
-color: 0x59453e,
-roughness: 0.95,
-metalness: 0.35
-});
-
-function addV42Barrel(x, z) {
-
-const barrel = new THREE.Mesh(
+const wheel =
+new THREE.Mesh(
 new THREE.CylinderGeometry(
-0.45,
-0.45,
-0.95,
+0.38,
+0.38,
+0.22,
 16
 ),
-v42BarrelMat
+wheelMat
+);
+
+wheel.rotation.z =
+Math.PI / 2;
+
+wheel.position.set(
+x + wx,
+0.4,
+z + wz
+);
+
+wheel.rotation.y =
+rotation;
+
+scene.add(wheel);
+}
+}
+
+// headlights
+
+const lampMat =
+new THREE.MeshStandardMaterial({
+color: 0xfff4ce,
+emissive: 0xfff1b0,
+emissiveIntensity: 0.5
+});
+
+v5Box(
+x - 0.85,
+0.75,
+z - 2.58,
+0.35,
+0.22,
+0.08,
+lampMat
+);
+
+v5Box(
+x + 0.85,
+0.75,
+z - 2.58,
+0.35,
+0.22,
+0.08,
+lampMat
+);
+}
+
+
+v5Car(
+-5,
+-18,
+0.08,
+0x5b6462
+);
+
+v5Car(
+6,
+-38,
+-0.22,
+0x465256
+);
+
+v5Car(
+-5,
+-57,
+0.12,
+0x62605a
+);
+
+
+// ============================================================
+// STREET FURNITURE
+// ============================================================
+
+function v5Bin(
+x,
+z
+) {
+
+v5Box(
+x,
+0.55,
+z,
+0.8,
+1.1,
+0.8,
+v5BuildingDark
+);
+
+v5Box(
+x,
+1.13,
+z,
+0.9,
+0.08,
+0.9,
+v5ConcreteDark
+);
+}
+
+
+v5Bin(-7, -51);
+v5Bin(7, -54);
+v5Bin(-5, -72);
+v5Bin(6, -91);
+
+
+// ============================================================
+// RUSTED BARRELS
+// ============================================================
+
+function v5Barrel(
+x,
+z
+) {
+
+const barrel =
+new THREE.Mesh(
+new THREE.CylinderGeometry(
+0.48,
+0.48,
+1,
+16
+),
+v5Rust
 );
 
 barrel.position.set(
 x,
-0.475,
+0.5,
 z
 );
 
 scene.add(barrel);
 
-const ringMat = new THREE.MeshStandardMaterial({
-color: 0x343738,
-roughness: 0.8,
-metalness: 0.5
-});
+for (const y of [0.22, 0.78]) {
 
-for (const y of [0.22, 0.73]) {
-
-const ring = new THREE.Mesh(
+const ring =
+new THREE.Mesh(
 new THREE.TorusGeometry(
-0.45,
+0.48,
 0.035,
 8,
 16
 ),
-ringMat
+v5ConcreteDark
 );
 
-ring.rotation.x = Math.PI / 2;
+ring.rotation.x =
+Math.PI / 2;
 
 ring.position.set(
 x,
@@ -2119,189 +1843,99 @@ scene.add(ring);
 }
 }
 
-addV42Barrel(-6.5, -55);
-addV42Barrel(6.2, -61);
-addV42Barrel(-7.2, -70);
+
+v5Barrel(-6, -62);
+v5Barrel(7, -67);
+v5Barrel(-7, -76);
 
 
-// ---------- Damaged abandoned car ----------
-const v42CarBodyMat = new THREE.MeshStandardMaterial({
-color: 0x464b4d,
-roughness: 0.9,
-metalness: 0.2
+// ============================================================
+// TREES / GRASS
+// ============================================================
+
+const v5Grass =
+new THREE.MeshStandardMaterial({
+color: 0x4d5946,
+roughness: 1
 });
 
-const v42CarWindowMat = new THREE.MeshStandardMaterial({
-color: 0x252c2f,
-roughness: 0.35,
-metalness: 0.35
-});
+for (let i = 0; i < 30; i++) {
 
-const v42CarBody = box(
-3.6,
-0.75,
-6.2,
-v42CarBodyMat
-);
+const side =
+Math.random() > 0.5
+? -1
+: 1;
 
-v42CarBody.position.set(
--5.8,
-0.65,
--82
-);
+const x =
+side *
+(12.5 + Math.random() * 6);
 
-v42CarBody.rotation.y = 0.08;
+const z =
+-15 -
+Math.random() * 75;
 
-scene.add(v42CarBody);
-
-
-const v42CarRoof = box(
-2.8,
-0.65,
-3.0,
-v42CarBodyMat
-);
-
-v42CarRoof.position.set(
--5.8,
-1.35,
--82.1
-);
-
-v42CarRoof.rotation.y = 0.08;
-
-scene.add(v42CarRoof);
-
-
-const v42CarWindow = box(
-2.4,
-0.38,
-2.5,
-v42CarWindowMat
-);
-
-v42CarWindow.position.set(
--5.8,
-1.68,
--82.1
-);
-
-v42CarWindow.rotation.y = 0.08;
-
-scene.add(v42CarWindow);
-
-
-// ---------- Broken lamp ----------
-const v42BrokenLampMat = new THREE.MeshStandardMaterial({
-color: 0x34393a,
-roughness: 0.9,
-metalness: 0.35
-});
-
-const v42BrokenLamp = box(
+const stem =
+new THREE.Mesh(
+new THREE.CylinderGeometry(
+0.10,
 0.18,
-2.7,
-0.18,
-v42BrokenLampMat
+1.8,
+7
+),
+v5Grass
 );
 
-v42BrokenLamp.position.set(
-6.5,
-1.35,
--76
+stem.position.set(
+x,
+0.9,
+z
 );
 
-v42BrokenLamp.rotation.z = -0.18;
+scene.add(stem);
 
-scene.add(v42BrokenLamp);
-
-
-const v42LampArm = box(
-0.16,
-0.16,
-1.1,
-v42BrokenLampMat
+const crown =
+new THREE.Mesh(
+new THREE.SphereGeometry(
+0.8 + Math.random() * 0.5,
+8,
+8
+),
+v5Grass
 );
 
-v42LampArm.position.set(
-6.4,
-2.65,
--76
+crown.position.set(
+x,
+2,
+z
 );
 
-v42LampArm.rotation.y = Math.PI / 2;
+crown.scale.y = 0.8;
 
-scene.add(v42LampArm);
-
-
-// ---------- Seawall ----------
-const v42SeawallMat = new THREE.MeshStandardMaterial({
-color: 0x666c6d,
-roughness: 1.0
-});
-
-const v42Seawall = box(
-22,
-1.5,
-1.0,
-v42SeawallMat
-);
-
-v42Seawall.position.set(
-0,
-0.75,
--92
-);
-
-scene.add(v42Seawall);
-
-
-// ---------- Seawall warning stripes ----------
-const v42StripeMat = new THREE.MeshStandardMaterial({
-color: 0xb39a55,
-roughness: 0.9
-});
-
-for (let i = 0; i < 10; i++) {
-
-const stripe = box(
-1.0,
-0.04,
-0.08,
-v42StripeMat
-);
-
-stripe.position.set(
--9.5 + i * 2.1,
-1.55,
--92.48
-);
-
-stripe.rotation.y = -0.65;
-
-scene.add(stripe);
+scene.add(crown);
 }
 
 
-// ---------- Small debris ----------
-const v42DebrisMat = new THREE.MeshStandardMaterial({
-color: 0x3f4445,
-roughness: 1.0
+// ============================================================
+// SMALL DEBRIS
+// ============================================================
+
+const v5Debris =
+new THREE.MeshStandardMaterial({
+color: 0x444847,
+roughness: 1
 });
 
-for (let i = 0; i < 20; i++) {
+for (let i = 0; i < 45; i++) {
 
-const debris = box(
-0.15 + Math.random() * 0.35,
-0.12 + Math.random() * 0.25,
-0.15 + Math.random() * 0.4,
-v42DebrisMat
-);
-
-debris.position.set(
+const debris =
+v5Box(
 -9 + Math.random() * 18,
-0.1,
--42 - Math.random() * 48
+0.12,
+-25 - Math.random() * 70,
+0.15 + Math.random() * 0.4,
+0.15 + Math.random() * 0.3,
+0.15 + Math.random() * 0.45,
+v5Debris
 );
 
 debris.rotation.set(
@@ -2309,1098 +1943,104 @@ Math.random(),
 Math.random(),
 Math.random()
 );
-
-scene.add(debris);
 }
 
 
-// ---------- Extra dead vegetation ----------
-const v42DeadPlantMat = new THREE.MeshStandardMaterial({
-color: 0x4b5148,
-roughness: 1.0
-});
+// ============================================================
+// WATER — REALISTIC PROCEDURAL WAVES
+// ============================================================
 
-for (let i = 0; i < 14; i++) {
-
-const stem = box(
-0.08,
-0.8 + Math.random() * 0.8,
-0.08,
-v42DeadPlantMat
-);
-
-stem.position.set(
--10 + Math.random() * 20,
-0.5,
--40 - Math.random() * 45
-);
-
-stem.rotation.z =
-(Math.random() - 0.5) * 0.5;
-
-scene.add(stem);
-}
-
-// ================================
-// END V4.2 ENVIRONMENT DETAIL
-// ================================
-
-// ================================
-// V4.3 SCENE CLEANUP - CORRECTED
-// ================================
-
-// Hide the NEW floating V4.1 pier sign
-// Keep the original pier sign with two support poles.
-
-if (typeof v4fixSign !== "undefined") {
-v4fixSign.visible = false;
-}
-
-
-// Hide the two NEW V4.1 sign supports
-
-scene.traverse(function(object) {
-
-if (!object.isMesh) return;
-
-const x = object.position.x;
-const z = object.position.z;
-
-if (
-Math.abs(z + 52) < 0.5 &&
-Math.abs(Math.abs(x) - 3.4) < 0.5
-) {
-object.visible = false;
-}
-});
-
-
-// Remove the two floating yellow lamp heads
-// from the original lamp-head positions.
-
-scene.traverse(function(object) {
-
-if (!object.isMesh) return;
-
-const x = object.position.x;
-const z = object.position.z;
-
-const leftLamp =
-Math.abs(x + 9) < 0.8 &&
-Math.abs(z + 102) < 1.5;
-
-const rightLamp =
-Math.abs(x - 9) < 0.8 &&
-Math.abs(z + 106) < 1.5;
-
-if (leftLamp || rightLamp) {
-
-object.visible = false;
-}
-});
-
-
-// ================================
-// END V4.3 SCENE CLEANUP - CORRECTED
-// ================================
-
-// ================================
-// V4.4 REALISTIC SKY SYSTEM
-// ================================
-
-// ---------- Sky gradient ----------
-const v44SkyGeometry =
-new THREE.SphereGeometry(
-280,
-32,
-32
-);
-
-const v44SkyMaterial =
-new THREE.ShaderMaterial({
-
-side: THREE.BackSide,
-
-uniforms: {
-topColor: {
-value: new THREE.Color(0x5d8fb5)
-},
-
-bottomColor: {
-value: new THREE.Color(0xd7e3e5)
-},
-
-offset: {
-value: 25
-},
-
-exponent: {
-value: 0.55
-}
-},
-
-vertexShader: `
-varying vec3 vWorldPosition;
-
-void main() {
-
-vec4 worldPosition =
-modelMatrix *
-vec4(position, 1.0);
-
-vWorldPosition =
-worldPosition.xyz;
-
-gl_Position =
-projectionMatrix *
-modelViewMatrix *
-vec4(position, 1.0);
-}
-`,
-
-fragmentShader: `
-uniform vec3 topColor;
-uniform vec3 bottomColor;
-uniform float offset;
-uniform float exponent;
-
-varying vec3 vWorldPosition;
-
-void main() {
-
-float h =
-normalize(vWorldPosition + offset).y;
-
-float mixValue =
-max(
-pow(
-max(h, 0.0),
-exponent
-),
-0.0
-);
-
-gl_FragColor =
-vec4(
-mix(
-bottomColor,
-topColor,
-mixValue
-),
-1.0
-);
-}
-`
-});
-
-const v44Sky =
-new THREE.Mesh(
-v44SkyGeometry,
-v44SkyMaterial
-);
-
-v44Sky.position.set(
-0,
-0,
-0
-);
-
-scene.add(v44Sky);
-
-
-// ---------- Atmospheric fog ----------
-scene.background =
-new THREE.Color(0x9bb8c8);
-
-scene.fog =
-new THREE.Fog(
-0x9bb8c8,
-55,
-210
-);
-
-
-// ---------- Soft sunlight ----------
-const v44SunLight =
-new THREE.DirectionalLight(
-0xfff4dc,
-1.25
-);
-
-v44SunLight.position.set(
--60,
+const v5WaterGeometry =
+new THREE.PlaneGeometry(
+180,
+100,
 80,
 40
 );
 
-v44SunLight.castShadow = true;
+const v5Water =
+new THREE.Mesh(
+v5WaterGeometry,
+new THREE.MeshStandardMaterial({
+color: 0x3f737b,
+roughness: 0.22,
+metalness: 0.12
+})
+);
 
-scene.add(v44SunLight);
+v5Water.rotation.x =
+-Math.PI / 2;
+
+v5Water.position.set(
+0,
+-0.25,
+-110
+);
+
+scene.add(v5Water);
+
+const v5WaterPositions =
+v5WaterGeometry.attributes.position;
+
+const v5WaterBase = [];
+
+for (
+let i = 0;
+i < v5WaterPositions.count;
+i++
+) {
+
+v5WaterBase.push({
+x: v5WaterPositions.getX(i),
+y: v5WaterPositions.getY(i),
+z: v5WaterPositions.getZ(i)
+});
+}
 
 
-// ---------- Soft ambient light ----------
-const v44Ambient =
+// ============================================================
+// SKY / ATMOSPHERE
+// ============================================================
+
+scene.background =
+new THREE.Color(0x91b0c1);
+
+scene.fog =
+new THREE.Fog(
+0x91b0c1,
+65,
+185
+);
+
+const v5Sun =
+new THREE.DirectionalLight(
+0xfff3dc,
+1.7
+);
+
+v5Sun.position.set(
+-45,
+65,
+35
+);
+
+v5Sun.castShadow = true;
+
+scene.add(v5Sun);
+
+const v5Ambient =
 new THREE.HemisphereLight(
-0xb8d5e6,
-0x5c615d,
-1.15
+0xd5e5ea,
+0x515753,
+1.45
 );
 
-scene.add(v44Ambient);
+scene.add(v5Ambient);
 
 
-// ---------- Sun disc ----------
-const v44SunMaterial =
-new THREE.MeshBasicMaterial({
-color: 0xfff1b8
-});
-
-const v44Sun =
-new THREE.Mesh(
-new THREE.SphereGeometry(
-5,
-24,
-24
-),
-v44SunMaterial
-);
-
-v44Sun.position.set(
--75,
-65,
--130
-);
-
-scene.add(v44Sun);
-
-
-// ---------- Cloud texture ----------
-function createV44CloudTexture() {
-
-const canvas =
-document.createElement("canvas");
-
-canvas.width = 512;
-canvas.height = 256;
-
-const ctx =
-canvas.getContext("2d");
-
-ctx.clearRect(
-0,
-0,
-canvas.width,
-canvas.height
-);
-
-ctx.fillStyle =
-"rgba(255,255,255,0.82)";
-
-const clouds = [
-[130, 135, 75],
-[190, 115, 90],
-[255, 135, 70],
-[325, 125, 95],
-[390, 145, 65]
-];
-
-for (const cloud of clouds) {
-
-ctx.beginPath();
-
-ctx.arc(
-cloud[0],
-cloud[1],
-cloud[2],
-0,
-Math.PI * 2
-);
-
-ctx.fill();
-}
-
-return new THREE.CanvasTexture(
-canvas
-);
-}
-
-
-// ---------- Clouds ----------
-const v44CloudTexture =
-createV44CloudTexture();
-
-const v44CloudMaterial =
-new THREE.SpriteMaterial({
-map: v44CloudTexture,
-transparent: true,
-depthWrite: false,
-opacity: 0.72
-});
-
-
-function addV44Cloud(
-x,
-y,
-z,
-scaleX,
-scaleY
-) {
-
-const cloud =
-new THREE.Sprite(
-v44CloudMaterial.clone()
-);
-
-cloud.position.set(
-x,
-y,
-z
-);
-
-cloud.scale.set(
-scaleX,
-scaleY,
-1
-);
-
-scene.add(cloud);
-}
-
-
-// distant clouds
-addV44Cloud(
--55,
-35,
--120,
-32,
-13
-);
-
-addV44Cloud(
-45,
-40,
--150,
-40,
-15
-);
-
-addV44Cloud(
--10,
-48,
--190,
-48,
-17
-);
-
-addV44Cloud(
-75,
-32,
--100,
-28,
-11
-);
-
-addV44Cloud(
--85,
-45,
--180,
-38,
-14
-);
-
-
-// ---------- Light cloud haze ----------
-const v44HazeMaterial =
-new THREE.MeshBasicMaterial({
-color: 0xdce8ea,
-transparent: true,
-opacity: 0.12,
-depthWrite: false
-});
-
-const v44Haze =
-new THREE.Mesh(
-new THREE.PlaneGeometry(
-180,
-45
-),
-v44HazeMaterial
-);
-
-v44Haze.position.set(
-0,
-18,
--120
-);
-
-scene.add(v44Haze);
-
-
-// ================================
-// END V4.4 REALISTIC SKY SYSTEM
-// ================================
-
-// ================================
-// V4.4 CLEANUP
-// Remove problematic sky objects
-// ================================
-
-// Remove the V4.4 sky sphere
-if (typeof v44Sky !== "undefined") {
-v44Sky.visible = false;
-}
-
-
-// Remove the V4.4 fake sun
-if (typeof v44Sun !== "undefined") {
-v44Sun.visible = false;
-}
-
-
-// Remove V4.4 cloud sprites
-scene.traverse(function(object) {
-
-if (!object.isSprite) return;
-
-// V4.4 clouds are high above the city
-if (object.position.y > 20) {
-object.visible = false;
-}
-});
-
-
-// Remove V4.4 white haze
-if (typeof v44Haze !== "undefined") {
-v44Haze.visible = false;
-}
-
-
-// Remove yellow floating sphere objects
-// but keep green tree objects.
-
-scene.traverse(function(object) {
-
-if (!object.isMesh) return;
-
-if (
-!object.geometry ||
-object.geometry.type !== "SphereGeometry"
-) {
-return;
-}
-
-if (!object.material) return;
-
-const material =
-Array.isArray(object.material)
-? object.material[0]
-: object.material;
-
-if (!material.color) return;
-
-const r = material.color.r;
-const g = material.color.g;
-const b = material.color.b;
-
-// Detect yellow/golden objects
-if (
-r > 0.65 &&
-g > 0.50 &&
-b < 0.40 &&
-r > b * 1.5
-) {
-object.visible = false;
-}
-});
-
-
-// Keep a clean blue-grey sky background
-scene.background =
-new THREE.Color(0x8fb1c4);
-
-
-// Keep a gentle atmospheric fog
-scene.fog =
-new THREE.Fog(
-0x8fb1c4,
-70,
-220
-);
-
-
-// ================================
-// END V4.4 CLEANUP
-// ================================
-
-// ================================
-// V4.5 REALISTIC PROCEDURAL SKY
-// ================================
-
-const v45SkyGeometry =
-new THREE.SphereGeometry(
-500,
-64,
-32
-);
-
-const v45SkyMaterial =
-new THREE.ShaderMaterial({
-
-side: THREE.BackSide,
-
-depthWrite: false,
-
-uniforms: {
-time: {
-value: 0
-}
-},
-
-vertexShader: `
-varying vec3 vDirection;
-
-void main() {
-
-vDirection = normalize(position);
-
-gl_Position =
-projectionMatrix *
-modelViewMatrix *
-vec4(position, 1.0);
-}
-`,
-
-fragmentShader: `
-varying vec3 vDirection;
-
-uniform float time;
-
-
-float hash(vec2 p) {
-
-return fract(
-sin(
-dot(
-p,
-vec2(
-127.1,
-311.7
-)
-)
-) * 43758.5453123
-);
-}
-
-
-float noise(vec2 p) {
-
-vec2 i = floor(p);
-vec2 f = fract(p);
-
-f = f * f *
-(3.0 - 2.0 * f);
-
-float a = hash(i);
-float b = hash(i + vec2(1.0, 0.0));
-float c = hash(i + vec2(0.0, 1.0));
-float d = hash(i + vec2(1.0, 1.0));
-
-return mix(
-mix(a, b, f.x),
-mix(c, d, f.x),
-f.y
-);
-}
-
-
-float fbm(vec2 p) {
-
-float value = 0.0;
-float amplitude = 0.5;
-
-for (int i = 0; i < 5; i++) {
-
-value +=
-amplitude *
-noise(p);
-
-p *= 2.0;
-amplitude *= 0.5;
-}
-
-return value;
-}
-
-
-void main() {
-
-vec3 dir =
-normalize(vDirection);
-
-
-// Sky gradient
-
-float skyHeight =
-clamp(
-dir.y * 0.5 + 0.5,
-0.0,
-1.0
-);
-
-
-vec3 horizonColor =
-vec3(
-0.72,
-0.82,
-0.86
-);
-
-vec3 skyColor =
-vec3(
-0.18,
-0.43,
-0.67
-);
-
-
-vec3 color =
-mix(
-horizonColor,
-skyColor,
-pow(
-skyHeight,
-0.65
-)
-);
-
-
-// Cloud layer
-
-if (dir.y > 0.05) {
-
-vec2 cloudUV =
-dir.xz /
-max(
-dir.y,
-0.12
-);
-
-cloudUV *= 0.18;
-
-cloudUV +=
-vec2(
-time * 0.0005,
-0.0
-);
-
-
-float cloud =
-fbm(
-cloudUV
-);
-
-
-float cloudMask =
-smoothstep(
-0.42,
-0.58,
-cloud
-);
-
-
-// clouds become thinner near horizon
-
-float cloudFade =
-smoothstep(
-0.08,
-0.30,
-dir.y
-);
-
-
-cloudMask *=
-cloudFade;
-
-
-vec3 cloudColor =
-vec3(
-0.92,
-0.95,
-0.95
-);
-
-
-color =
-mix(
-color,
-cloudColor,
-cloudMask * 0.90
-);
-}
-
-
-// Soft sun glow
-
-vec3 sunDirection =
-normalize(
-vec3(
--0.45,
-0.65,
--0.60
-)
-);
-
-
-float sun =
-max(
-dot(
-dir,
-sunDirection
-),
-0.0
-);
-
-
-sun =
-pow(
-sun,
-180.0
-);
-
-
-color +=
-vec3(
-1.0,
-0.78,
-0.48
-) *
-sun *
-0.75;
-
-
-gl_FragColor =
-vec4(
-color,
-1.0
-);
-}
-`
-});
-
-
-const v45Sky =
-new THREE.Mesh(
-v45SkyGeometry,
-v45SkyMaterial
-);
-
-v45Sky.frustumCulled = false;
-
-scene.add(v45Sky);
-
-
-// Keep the sky around the player.
-// This prevents the sky from behaving like a nearby object.
-
-function updateV45Sky() {
-
-if (typeof camera !== "undefined") {
-
-v45Sky.position.copy(
-camera.position
-);
-}
-
-v45SkyMaterial.uniforms.time.value =
-performance.now();
-}
-
-
-// ================================
-// END V4.5 REALISTIC PROCEDURAL SKY
-// ================================
-
-// ================================
-// V4.5.1 REAL SKY BACKGROUND
-// ================================
-
-if (typeof v45Sky !== "undefined") {
-v45Sky.visible = false;
-}
-if (typeof v45Sky !== "undefined") {
-v45Sky.visible = true;
-}
-
-// Create a high-resolution sky image
-const v451Canvas =
-document.createElement("canvas");
-
-v451Canvas.width = 2048;
-v451Canvas.height = 1024;
-
-const v451Ctx =
-v451Canvas.getContext("2d");
-
-
-// ---------- Sky gradient ----------
-
-const v451Gradient =
-v451Ctx.createLinearGradient(
-0,
-0,
-0,
-1024
-);
-
-v451Gradient.addColorStop(
-0,
-"#3d78aa"
-);
-
-v451Gradient.addColorStop(
-0.35,
-"#6fa1c3"
-);
-
-v451Gradient.addColorStop(
-0.68,
-"#a9c5d0"
-);
-
-v451Gradient.addColorStop(
-1,
-"#d5dedf"
-);
-
-v451Ctx.fillStyle =
-v451Gradient;
-
-v451Ctx.fillRect(
-0,
-0,
-2048,
-1024
-);
-
-
-// ---------- Soft cloud layer ----------
-
-function drawV451Cloud(
-x,
-y,
-width,
-height,
-opacity
-) {
-
-const gradient =
-v451Ctx.createRadialGradient(
-x,
-y,
-width * 0.05,
-x,
-y,
-width
-);
-
-gradient.addColorStop(
-0,
-`rgba(255,255,255,${opacity})`
-);
-
-gradient.addColorStop(
-0.45,
-`rgba(245,250,250,${opacity * 0.75})`
-);
-
-gradient.addColorStop(
-1,
-"rgba(255,255,255,0)"
-);
-
-v451Ctx.fillStyle =
-gradient;
-
-v451Ctx.beginPath();
-
-v451Ctx.ellipse(
-x,
-y,
-width,
-height,
-0,
-0,
-Math.PI * 2
-);
-
-v451Ctx.fill();
-}
-
-
-// Large distant clouds
-
-drawV451Cloud(
-280,
-230,
-260,
-85,
-0.65
-);
-
-drawV451Cloud(
-470,
-250,
-300,
-100,
-0.55
-);
-
-drawV451Cloud(
-760,
-190,
-230,
-75,
-0.58
-);
-
-drawV451Cloud(
-1050,
-260,
-330,
-95,
-0.60
-);
-
-drawV451Cloud(
-1380,
-210,
-280,
-85,
-0.55
-);
-
-drawV451Cloud(
-1710,
-275,
-330,
-100,
-0.62
-);
-
-
-// Smaller broken clouds
-
-drawV451Cloud(
-180,
-370,
-180,
-55,
-0.42
-);
-
-drawV451Cloud(
-610,
-340,
-210,
-65,
-0.38
-);
-
-drawV451Cloud(
-920,
-380,
-190,
-58,
-0.40
-);
-
-drawV451Cloud(
-1290,
-350,
-240,
-65,
-0.42
-);
-
-drawV451Cloud(
-1600,
-390,
-210,
-60,
-0.40
-);
-
-
-// ---------- Thin atmospheric cloud band ----------
-
-const v451HorizonGradient =
-v451Ctx.createLinearGradient(
-0,
-470,
-0,
-650
-);
-
-v451HorizonGradient.addColorStop(
-0,
-"rgba(255,255,255,0)"
-);
-
-v451HorizonGradient.addColorStop(
-0.5,
-"rgba(235,242,243,0.22)"
-);
-
-v451HorizonGradient.addColorStop(
-1,
-"rgba(220,230,232,0.42)"
-);
-
-v451Ctx.fillStyle =
-v451HorizonGradient;
-
-v451Ctx.fillRect(
-0,
-430,
-2048,
-240
-);
-
-
-// ---------- Create texture ----------
-
-const v451SkyTexture =
-new THREE.CanvasTexture(
-v451Canvas
-);
-
-v451SkyTexture.colorSpace =
-THREE.SRGBColorSpace;
-
-v451SkyTexture.needsUpdate =
-true;
-
-
-// ---------- Apply to scene ----------
-
-scene.background =
-v451SkyTexture;
-
-
-// ---------- Atmospheric fog ----------
-
-scene.fog =
-new THREE.Fog(
-0xa9c5d0,
-75,
-230
-);
-
-
-// ================================
-// END V4.5.1 REAL SKY BACKGROUND
-// ================================
-
+// ============================================================
+// CLOUDS
+// =================================================
 
 // ========================================
 // GAME VARIABLES
