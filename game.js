@@ -1939,6 +1939,413 @@ scene.add(lamp);
 // END V4.1 VISIBILITY FIX
 // ================================
 
+// ================================
+// V4.2 ENVIRONMENT DETAIL
+// ================================
+
+// ---------- Broken road patches ----------
+const v42BrokenRoadMat = new THREE.MeshStandardMaterial({
+color: 0x55585a,
+roughness: 1.0
+});
+
+for (let i = 0; i < 10; i++) {
+
+const patch = box(
+1.2 + Math.random() * 1.8,
+0.025,
+0.35 + Math.random() * 0.5,
+v42BrokenRoadMat
+);
+
+patch.position.set(
+-8 + Math.random() * 16,
+0.035,
+-38 - i * 5
+);
+
+patch.rotation.y =
+(Math.random() - 0.5) * 0.5;
+
+scene.add(patch);
+}
+
+
+// ---------- Roadside concrete blocks ----------
+const v42ConcreteMat = new THREE.MeshStandardMaterial({
+color: 0x686b6b,
+roughness: 0.95
+});
+
+for (const x of [-8.5, 8.5]) {
+
+for (let i = 0; i < 4; i++) {
+
+const block = box(
+1.2,
+0.65,
+0.7,
+v42ConcreteMat
+);
+
+block.position.set(
+x,
+0.325,
+-48 - i * 7
+);
+
+block.rotation.y =
+(Math.random() - 0.5) * 0.25;
+
+scene.add(block);
+}
+}
+
+
+// ---------- Abandoned metal barriers ----------
+const v42BarrierMat = new THREE.MeshStandardMaterial({
+color: 0x4c5355,
+roughness: 0.85,
+metalness: 0.4
+});
+
+function addV42Barrier(x, z) {
+
+const top = box(
+0.12,
+0.12,
+3.0,
+v42BarrierMat
+);
+
+top.position.set(
+x,
+1.05,
+z
+);
+
+scene.add(top);
+
+const post1 = box(
+0.14,
+1.1,
+0.14,
+v42BarrierMat
+);
+
+post1.position.set(
+x,
+0.55,
+z - 1.4
+);
+
+scene.add(post1);
+
+const post2 = box(
+0.14,
+1.1,
+0.14,
+v42BarrierMat
+);
+
+post2.position.set(
+x,
+0.55,
+z + 1.4
+);
+
+scene.add(post2);
+}
+
+addV42Barrier(-5.5, -46);
+addV42Barrier(5.5, -53);
+addV42Barrier(-6.0, -72);
+
+
+// ---------- Rusted barrels ----------
+const v42BarrelMat = new THREE.MeshStandardMaterial({
+color: 0x59453e,
+roughness: 0.95,
+metalness: 0.35
+});
+
+function addV42Barrel(x, z) {
+
+const barrel = new THREE.Mesh(
+new THREE.CylinderGeometry(
+0.45,
+0.45,
+0.95,
+16
+),
+v42BarrelMat
+);
+
+barrel.position.set(
+x,
+0.475,
+z
+);
+
+scene.add(barrel);
+
+const ringMat = new THREE.MeshStandardMaterial({
+color: 0x343738,
+roughness: 0.8,
+metalness: 0.5
+});
+
+for (const y of [0.22, 0.73]) {
+
+const ring = new THREE.Mesh(
+new THREE.TorusGeometry(
+0.45,
+0.035,
+8,
+16
+),
+ringMat
+);
+
+ring.rotation.x = Math.PI / 2;
+
+ring.position.set(
+x,
+y,
+z
+);
+
+scene.add(ring);
+}
+}
+
+addV42Barrel(-6.5, -55);
+addV42Barrel(6.2, -61);
+addV42Barrel(-7.2, -70);
+
+
+// ---------- Damaged abandoned car ----------
+const v42CarBodyMat = new THREE.MeshStandardMaterial({
+color: 0x464b4d,
+roughness: 0.9,
+metalness: 0.2
+});
+
+const v42CarWindowMat = new THREE.MeshStandardMaterial({
+color: 0x252c2f,
+roughness: 0.35,
+metalness: 0.35
+});
+
+const v42CarBody = box(
+3.6,
+0.75,
+6.2,
+v42CarBodyMat
+);
+
+v42CarBody.position.set(
+-5.8,
+0.65,
+-82
+);
+
+v42CarBody.rotation.y = 0.08;
+
+scene.add(v42CarBody);
+
+
+const v42CarRoof = box(
+2.8,
+0.65,
+3.0,
+v42CarBodyMat
+);
+
+v42CarRoof.position.set(
+-5.8,
+1.35,
+-82.1
+);
+
+v42CarRoof.rotation.y = 0.08;
+
+scene.add(v42CarRoof);
+
+
+const v42CarWindow = box(
+2.4,
+0.38,
+2.5,
+v42CarWindowMat
+);
+
+v42CarWindow.position.set(
+-5.8,
+1.68,
+-82.1
+);
+
+v42CarWindow.rotation.y = 0.08;
+
+scene.add(v42CarWindow);
+
+
+// ---------- Broken lamp ----------
+const v42BrokenLampMat = new THREE.MeshStandardMaterial({
+color: 0x34393a,
+roughness: 0.9,
+metalness: 0.35
+});
+
+const v42BrokenLamp = box(
+0.18,
+2.7,
+0.18,
+v42BrokenLampMat
+);
+
+v42BrokenLamp.position.set(
+6.5,
+1.35,
+-76
+);
+
+v42BrokenLamp.rotation.z = -0.18;
+
+scene.add(v42BrokenLamp);
+
+
+const v42LampArm = box(
+0.16,
+0.16,
+1.1,
+v42BrokenLampMat
+);
+
+v42LampArm.position.set(
+6.4,
+2.65,
+-76
+);
+
+v42LampArm.rotation.y = Math.PI / 2;
+
+scene.add(v42LampArm);
+
+
+// ---------- Seawall ----------
+const v42SeawallMat = new THREE.MeshStandardMaterial({
+color: 0x666c6d,
+roughness: 1.0
+});
+
+const v42Seawall = box(
+22,
+1.5,
+1.0,
+v42SeawallMat
+);
+
+v42Seawall.position.set(
+0,
+0.75,
+-92
+);
+
+scene.add(v42Seawall);
+
+
+// ---------- Seawall warning stripes ----------
+const v42StripeMat = new THREE.MeshStandardMaterial({
+color: 0xb39a55,
+roughness: 0.9
+});
+
+for (let i = 0; i < 10; i++) {
+
+const stripe = box(
+1.0,
+0.04,
+0.08,
+v42StripeMat
+);
+
+stripe.position.set(
+-9.5 + i * 2.1,
+1.55,
+-92.48
+);
+
+stripe.rotation.y = -0.65;
+
+scene.add(stripe);
+}
+
+
+// ---------- Small debris ----------
+const v42DebrisMat = new THREE.MeshStandardMaterial({
+color: 0x3f4445,
+roughness: 1.0
+});
+
+for (let i = 0; i < 20; i++) {
+
+const debris = box(
+0.15 + Math.random() * 0.35,
+0.12 + Math.random() * 0.25,
+0.15 + Math.random() * 0.4,
+v42DebrisMat
+);
+
+debris.position.set(
+-9 + Math.random() * 18,
+0.1,
+-42 - Math.random() * 48
+);
+
+debris.rotation.set(
+Math.random(),
+Math.random(),
+Math.random()
+);
+
+scene.add(debris);
+}
+
+
+// ---------- Extra dead vegetation ----------
+const v42DeadPlantMat = new THREE.MeshStandardMaterial({
+color: 0x4b5148,
+roughness: 1.0
+});
+
+for (let i = 0; i < 14; i++) {
+
+const stem = box(
+0.08,
+0.8 + Math.random() * 0.8,
+0.08,
+v42DeadPlantMat
+);
+
+stem.position.set(
+-10 + Math.random() * 20,
+0.5,
+-40 - Math.random() * 45
+);
+
+stem.rotation.z =
+(Math.random() - 0.5) * 0.5;
+
+scene.add(stem);
+}
+
+
+// ================================
+// END V4.2 ENVIRONMENT DETAIL
+// ================================
+
 // ========================================
 // GAME VARIABLES
 // ========================================
