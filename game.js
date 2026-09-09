@@ -2341,9 +2341,62 @@ stem.rotation.z =
 scene.add(stem);
 }
 
-
 // ================================
 // END V4.2 ENVIRONMENT DETAIL
+// ================================
+
+// ================================
+// V4.3 SCENE CLEANUP
+// ================================
+
+// Hide the older pier sign so only the main sign remains
+scene.traverse(function(object) {
+
+if (!object.isMesh) return;
+
+if (
+object.position.z < -70 &&
+object.position.z > -82 &&
+object.position.y > 3
+) {
+if (
+object.geometry &&
+object.geometry.type === "BoxGeometry"
+) {
+object.visible = false;
+}
+}
+});
+
+
+// Remove misplaced floating lamp heads
+scene.traverse(function(object) {
+
+if (!object.isMesh) return;
+
+const x = object.position.x;
+const z = object.position.z;
+const y = object.position.y;
+
+const nearLeftLamp =
+Math.abs(x + 9) < 0.8 &&
+Math.abs(z + 102) < 1.5;
+
+const nearRightLamp =
+Math.abs(x - 9) < 0.8 &&
+Math.abs(z + 106) < 1.5;
+
+if (
+y > 2.5 &&
+(nearLeftLamp || nearRightLamp)
+) {
+object.visible = false;
+}
+});
+
+
+// ================================
+// END V4.3 SCENE CLEANUP
 // ================================
 
 // ========================================
