@@ -2832,6 +2832,294 @@ new THREE.Fog(
 // END V4.4 CLEANUP
 // ================================
 
+// ================================
+// V4.5 REALISTIC PROCEDURAL SKY
+// ================================
+
+const v45SkyGeometry =
+new THREE.SphereGeometry(
+500,
+64,
+32
+);
+
+const v45SkyMaterial =
+new THREE.ShaderMaterial({
+
+side: THREE.BackSide,
+
+depthWrite: false,
+
+uniforms: {
+time: {
+value: 0
+}
+},
+
+vertexShader: `
+varying vec3 vDirection;
+
+void main() {
+
+vDirection = normalize(position);
+
+gl_Position =
+projectionMatrix *
+modelViewMatrix *
+vec4(position, 1.0);
+}
+`,
+
+fragmentShader: `
+varying vec3 vDirection;
+
+uniform float time;
+
+
+float hash(vec2 p) {
+
+return fract(
+sin(
+dot(
+p,
+vec2(
+127.1,
+311.7
+)
+)
+) * 43758.5453123
+);
+}
+
+
+float noise(vec2 p) {
+
+vec2 i = floor(p);
+vec2 f = fract(p);
+
+f = f * f *
+(3.0 - 2.0 * f);
+
+float a = hash(i);
+float b = hash(i + vec2(1.0, 0.0));
+float c = hash(i + vec2(0.0, 1.0));
+float d = hash(i + vec2(1.0, 1.0));
+
+return mix(
+mix(a, b, f.x),
+mix(c, d, f.x),
+f.y
+);
+}
+
+
+float fbm(vec2 p) {
+
+float value = 0.0;
+float amplitude = 0.5;
+
+for (int i = 0; i < 5; i++) {
+
+value +=
+amplitude *
+noise(p);
+
+p *= 2.0;
+amplitude *= 0.5;
+}
+
+return value;
+}
+
+
+void main() {
+
+vec3 dir =
+normalize(vDirection);
+
+
+// Sky gradient
+
+float skyHeight =
+clamp(
+dir.y * 0.5 + 0.5,
+0.0,
+1.0
+);
+
+
+vec3 horizonColor =
+vec3(
+0.72,
+0.82,
+0.86
+);
+
+vec3 skyColor =
+vec3(
+0.18,
+0.43,
+0.67
+);
+
+
+vec3 color =
+mix(
+horizonColor,
+skyColor,
+pow(
+skyHeight,
+0.65
+)
+);
+
+
+// Cloud layer
+
+if (dir.y > 0.05) {
+
+vec2 cloudUV =
+dir.xz /
+max(
+dir.y,
+0.12
+);
+
+cloudUV *= 0.45;
+
+cloudUV +=
+vec2(
+time * 0.0005,
+0.0
+);
+
+
+float cloud =
+fbm(
+cloudUV
+);
+
+
+float cloudMask =
+smoothstep(
+0.54,
+0.72,
+cloud
+);
+
+
+// clouds become thinner near horizon
+
+float cloudFade =
+smoothstep(
+0.08,
+0.30,
+dir.y
+);
+
+
+cloudMask *=
+cloudFade;
+
+
+vec3 cloudColor =
+vec3(
+0.92,
+0.95,
+0.95
+);
+
+
+color =
+mix(
+color,
+cloudColor,
+cloudMask * 0.72
+);
+}
+
+
+// Soft sun glow
+
+vec3 sunDirection =
+normalize(
+vec3(
+-0.45,
+0.65,
+-0.60
+)
+);
+
+
+float sun =
+max(
+dot(
+dir,
+sunDirection
+),
+0.0
+);
+
+
+sun =
+pow(
+sun,
+180.0
+);
+
+
+color +=
+vec3(
+1.0,
+0.78,
+0.48
+) *
+sun *
+0.75;
+
+
+gl_FragColor =
+vec4(
+color,
+1.0
+);
+}
+`
+});
+
+
+const v45Sky =
+new THREE.Mesh(
+v45SkyGeometry,
+v45SkyMaterial
+);
+
+v45Sky.frustumCulled = false;
+
+scene.add(v45Sky);
+
+
+// Keep the sky around the player.
+// This prevents the sky from behaving like a nearby object.
+
+function updateV45Sky() {
+
+if (typeof camera !== "undefined") {
+
+v45Sky.position.copy(
+camera.position
+);
+}
+
+v45SkyMaterial.uniforms.time.value =
+performance.now();
+}
+
+
+// ================================
+// END V4.5 REALISTIC PROCEDURAL SKY
+// ================================
+
 // ========================================
 // GAME VARIABLES
 // ========================================
@@ -4000,6 +4288,7 @@ requestAnimationFrame(
 animate
 );
 
+updateV45Sky();  
 
 const now =
 performance.now();
