@@ -1,28 +1,64 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+import * as THREE from
+"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
-const canvas = document.createElement("canvas");
-document.body.appendChild(canvas);
 
-document.body.style.margin = "0";
-document.body.style.overflow = "hidden";
+// ================================
+// AMY — FIVE YEARS AFTER
+// ================================
 
-const scene = new THREE.Scene();
+const startScreen =
+document.getElementById("startScreen");
 
-scene.background = new THREE.Color(0xb9c3c3);
-scene.fog = new THREE.Fog(0xb9c3c3, 15, 100);
+const startButton =
+document.getElementById("startButton");
 
-const camera = new THREE.PerspectiveCamera(
+
+// ================================
+// SCENE
+// ================================
+
+const scene =
+new THREE.Scene();
+
+scene.background =
+new THREE.Color(0xb8c5c7);
+
+scene.fog =
+new THREE.Fog(
+0xb8c5c7,
+15,
+100
+);
+
+
+// ================================
+// CAMERA
+// ================================
+
+const camera =
+new THREE.PerspectiveCamera(
 70,
-window.innerWidth / window.innerHeight,
+window.innerWidth /
+window.innerHeight,
 0.1,
 200
 );
 
-camera.position.set(0, 1.7, 10);
+camera.position.set(
+0,
+2,
+8
+);
 
-const renderer = new THREE.WebGLRenderer({
-canvas: canvas,
-antialias: true
+
+// ================================
+// RENDERER
+// ================================
+
+const renderer =
+new THREE.WebGLRenderer({
+antialias: true,
+powerPreference: "high-performance"
 });
 
 renderer.setSize(
@@ -31,86 +67,117 @@ window.innerHeight
 );
 
 renderer.setPixelRatio(
-Math.min(window.devicePixelRatio, 1.5)
+Math.min(
+window.devicePixelRatio,
+1.5
+)
+);
+
+renderer.domElement.style.position =
+"fixed";
+
+renderer.domElement.style.left =
+"0";
+
+renderer.domElement.style.top =
+"0";
+
+renderer.domElement.style.width =
+"100%";
+
+renderer.domElement.style.height =
+"100%";
+
+renderer.domElement.style.zIndex =
+"1";
+
+document.body.appendChild(
+renderer.domElement
 );
 
 
-/* =========================
-LIGHT
-========================= */
+// ================================
+// LIGHTING
+// ================================
 
-const ambientLight =
+const skyLight =
 new THREE.HemisphereLight(
-0xdce7e8,
-0x59615f,
-2
+0xe6eeee,
+0x505754,
+2.5
 );
 
-scene.add(ambientLight);
+scene.add(skyLight);
 
-const sun =
+
+const sunlight =
 new THREE.DirectionalLight(
 0xffffff,
-2
+2.5
 );
 
-sun.position.set(
+sunlight.position.set(
 -20,
 40,
 20
 );
 
-scene.add(sun);
+scene.add(sunlight);
 
 
-/* =========================
-MATERIALS
-========================= */
+// ================================
+// MATERIALS
+// ================================
 
 const roadMaterial =
 new THREE.MeshStandardMaterial({
-color: 0x555957,
+color: 0x4e5554,
 roughness: 0.9
 });
+
 
 const concreteMaterial =
 new THREE.MeshStandardMaterial({
-color: 0x777b78,
-roughness: 1
-});
-
-const buildingMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x737875,
+color: 0x777d7b,
 roughness: 0.9
 });
 
-const metalMaterial =
+
+const buildingMaterial =
 new THREE.MeshStandardMaterial({
-color: 0x414746,
-roughness: 0.8,
-metalness: 0.3
+color: 0x727875,
+roughness: 0.95
 });
 
-const greenMaterial =
+
+const metalMaterial =
 new THREE.MeshStandardMaterial({
-color: 0x4d604f,
+color: 0x343b3a,
+metalness: 0.5,
+roughness: 0.7
+});
+
+
+const vegetationMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x405544,
 roughness: 1
 });
 
+
 const waterMaterial =
 new THREE.MeshStandardMaterial({
-color: 0x54767b,
-roughness: 0.3,
+color: 0x4f7379,
+roughness: 0.25,
 metalness: 0.1
 });
 
 
-/* =========================
-CREATE BOX
-========================= */
+// ================================
+// BOX FUNCTION
+// ================================
 
-function createBox(
+function box(
 x,
 y,
 z,
@@ -145,85 +212,93 @@ return object;
 }
 
 
-/* =========================
-ROAD
-========================= */
+// ================================
+// ROAD
+// ================================
 
-createBox(
+box(
 0,
--0.15,
+-0.2,
 -40,
-24,
-0.3,
+26,
+0.4,
 110,
 roadMaterial
 );
 
 
-/* =========================
-SIDEWALKS
-========================= */
+// ================================
+// SIDEWALKS
+// ================================
 
-createBox(
--14,
+box(
+-15,
 0,
 -40,
 4,
-0.4,
+0.5,
 110,
 concreteMaterial
 );
 
-createBox(
-14,
+box(
+15,
 0,
 -40,
 4,
-0.4,
+0.5,
 110,
 concreteMaterial
 );
 
 
-/* =========================
-BUILDINGS
-========================= */
+// ================================
+// BUILDINGS
+// ================================
 
-for (let i = 0; i < 5; i++) {
+for (
+let i = 0;
+i < 6;
+i++
+) {
 
 const z =
--10 - i * 18;
+-5 - i * 17;
 
-createBox(
--21,
+box(
+-22,
 5,
 z,
+11,
 10,
-10,
-14,
+13,
 buildingMaterial
 );
 
-createBox(
-21,
+box(
+22,
 6,
 z - 5,
-10,
+11,
 12,
-16,
+14,
 buildingMaterial
 );
 }
 
 
-/* =========================
-ABANDONED CARS
-========================= */
+// ================================
+// ABANDONED CARS
+// ================================
 
-function createCar(x, z, rotation) {
+function car(
+x,
+z,
+rotation
+) {
 
-const car =
-createBox(
+const body =
+box(
 x,
 0.8,
 z,
@@ -233,15 +308,15 @@ z,
 metalMaterial
 );
 
-car.rotation.y =
+body.rotation.y =
 rotation;
 
 const roof =
-createBox(
+box(
 x,
 1.5,
 z,
-2.5,
+2.4,
 0.7,
 2.8,
 metalMaterial
@@ -251,35 +326,63 @@ roof.rotation.y =
 rotation;
 }
 
-createCar(
--5,
--18,
-0.15
+car(-5, -18, 0.1);
+
+car(6, -38, -0.25);
+
+car(-4, -63, 0.15);
+
+
+// ================================
+// LIGHT RAIL TRACK
+// ================================
+
+const railMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x292e2d,
+metalness: 0.7,
+roughness: 0.5
+});
+
+box(
+-8,
+0.1,
+-45,
+0.15,
+0.15,
+105,
+railMaterial
 );
 
-createCar(
-6,
--38,
--0.3
+box(
+-6,
+0.1,
+-45,
+0.15,
+0.15,
+105,
+railMaterial
 );
 
-createCar(
--4,
--65,
-0.1
-);
 
+// ================================
+// VEGETATION
+// ================================
 
-/* =========================
-VEGETATION
-========================= */
+for (
+let i = 0;
+i < 40;
+i++
+) {
 
-for (let i = 0; i < 35; i++) {
+const side =
+Math.random() > 0.5
+? 1
+: -1;
 
 const x =
-(Math.random() > 0.5 ? 1 : -1)
-*
-(11 + Math.random() * 8);
+side *
+(12 + Math.random() * 8);
 
 const z =
 -Math.random() * 100;
@@ -292,7 +395,7 @@ new THREE.CylinderGeometry(
 3,
 8
 ),
-greenMaterial
+vegetationMaterial
 );
 
 trunk.position.set(
@@ -303,6 +406,7 @@ z
 
 scene.add(trunk);
 
+
 const leaves =
 new THREE.Mesh(
 new THREE.SphereGeometry(
@@ -310,12 +414,12 @@ new THREE.SphereGeometry(
 8,
 8
 ),
-greenMaterial
+vegetationMaterial
 );
 
 leaves.position.set(
 x,
-3.3,
+3.2,
 z
 );
 
@@ -323,9 +427,9 @@ scene.add(leaves);
 }
 
 
-/* =========================
-TUEN MUN SEA
-========================= */
+// ================================
+// SEA
+// ================================
 
 const sea =
 new THREE.Mesh(
@@ -340,102 +444,93 @@ sea.rotation.x =
 -Math.PI / 2;
 
 sea.position.set(
--62,
--0.05,
+-60,
+-0.1,
 -40
 );
 
 scene.add(sea);
 
 
-/* =========================
-LIGHT RAIL TRACK
-========================= */
+// ================================
+// STORY UI
+// ================================
 
-const railMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x303434,
-metalness: 0.7,
-roughness: 0.5
-});
+const text =
+document.createElement("div");
 
-createBox(
--9,
-0.08,
--45,
-0.12,
-0.15,
-100,
-railMaterial
-);
+text.style.position =
+"fixed";
 
-createBox(
--7,
-0.08,
--45,
-0.12,
-0.15,
-100,
-railMaterial
-);
+text.style.bottom =
+"130px";
 
+text.style.left =
+"0";
 
-/* =========================
-SIMPLE STREET LIGHTS
-========================= */
+text.style.width =
+"100%";
 
-function createStreetLight(x, z) {
+text.style.textAlign =
+"center";
 
-createBox(
-x,
-3,
-z,
-0.15,
-6,
-0.15,
-metalMaterial
-);
+text.style.color =
+"white";
 
-const lamp =
-new THREE.PointLight(
-0xfff1cc,
-1,
-12
-);
+text.style.fontSize =
+"18px";
 
-lamp.position.set(
-x,
-6,
-z
-);
+text.style.textShadow =
+"0 2px 8px black";
 
-scene.add(lamp);
-}
+text.style.zIndex =
+"20";
 
-createStreetLight(-12, -15);
-createStreetLight(12, -30);
-createStreetLight(-12, -55);
+text.style.pointerEvents =
+"none";
 
-
-/* =========================
-RADIO
-========================= */
-
-const radio =
-createBox(
-3,
-1,
--55,
-1.2,
-1,
-0.8,
-metalMaterial
+document.body.appendChild(
+text
 );
 
 
-/* =========================
-GAME STATE
-========================= */
+const mission =
+document.createElement("div");
+
+mission.style.position =
+"fixed";
+
+mission.style.top =
+"20px";
+
+mission.style.left =
+"20px";
+
+mission.style.padding =
+"10px 15px";
+
+mission.style.background =
+"rgba(0,0,0,.35)";
+
+mission.style.color =
+"white";
+
+mission.style.zIndex =
+"20";
+
+mission.innerText =
+"目標：探索屯門碼頭";
+
+document.body.appendChild(
+mission
+);
+
+
+// ================================
+// GAME START
+// ================================
+
+let started = false;
 
 let chapter = 1;
 
@@ -443,216 +538,129 @@ let radioFound = false;
 
 let danielFound = false;
 
-let ending = false;
+
+startButton.addEventListener(
+"click",
+function() {
+
+started = true;
+
+startScreen.style.display =
+"none";
+
+text.innerText =
+"Amy：五年了……我終於回到屯門碼頭。";
+
+setTimeout(
+function() {
+
+text.innerText =
+"";
+
+},
+4000
+);
+}
+);
 
 
-/* =========================
-PLAYER
-========================= */
+// ================================
+// PLAYER
+// ================================
 
 let yaw = 0;
 
 let pitch = 0;
 
-const movement = {
-forward: false,
-backward: false,
-left: false,
-right: false
+const keys = {
+
+w: false,
+s: false,
+a: false,
+d: false
+
 };
 
 
-/* =========================
-KEYBOARD
-========================= */
+// ================================
+// KEYBOARD
+// ================================
 
 window.addEventListener(
 "keydown",
-function(event) {
+function(e) {
 
-if (event.code === "KeyW")
-movement.forward = true;
+if (e.code === "KeyW")
+keys.w = true;
 
-if (event.code === "KeyS")
-movement.backward = true;
+if (e.code === "KeyS")
+keys.s = true;
 
-if (event.code === "KeyA")
-movement.left = true;
+if (e.code === "KeyA")
+keys.a = true;
 
-if (event.code === "KeyD")
-movement.right = true;
+if (e.code === "KeyD")
+keys.d = true;
 }
 );
 
 
 window.addEventListener(
 "keyup",
-function(event) {
+function(e) {
 
-if (event.code === "KeyW")
-movement.forward = false;
+if (e.code === "KeyW")
+keys.w = false;
 
-if (event.code === "KeyS")
-movement.backward = false;
+if (e.code === "KeyS")
+keys.s = false;
 
-if (event.code === "KeyA")
-movement.left = false;
+if (e.code === "KeyA")
+keys.a = false;
 
-if (event.code === "KeyD")
-movement.right = false;
+if (e.code === "KeyD")
+keys.d = false;
 }
 );
 
 
-/* =========================
-MOBILE CONTROLS
-========================= */
+// ================================
+// MOBILE LOOK
+// ================================
 
-const joystick =
-document.createElement("div");
+let lastX = null;
 
-joystick.innerHTML =
-"移動";
-
-joystick.style.position =
-"fixed";
-
-joystick.style.left =
-"25px";
-
-joystick.style.bottom =
-"30px";
-
-joystick.style.width =
-"90px";
-
-joystick.style.height =
-"90px";
-
-joystick.style.borderRadius =
-"50%";
-
-joystick.style.background =
-"rgba(255,255,255,0.15)";
-
-joystick.style.border =
-"1px solid rgba(255,255,255,0.4)";
-
-joystick.style.color =
-"white";
-
-joystick.style.display =
-"flex";
-
-joystick.style.alignItems =
-"center";
-
-joystick.style.justifyContent =
-"center";
-
-joystick.style.zIndex =
-"20";
-
-document.body.appendChild(
-joystick
-);
-
-
-let joystickStart = null;
-
-
-joystick.addEventListener(
-"touchstart",
-function(event) {
-
-joystickStart = {
-x: event.touches[0].clientX,
-y: event.touches[0].clientY
-};
-
-}
-);
-
-
-joystick.addEventListener(
-"touchmove",
-function(event) {
-
-if (!joystickStart)
-return;
-
-const x =
-event.touches[0].clientX -
-joystickStart.x;
-
-const y =
-event.touches[0].clientY -
-joystickStart.y;
-
-movement.forward =
-y < -15;
-
-movement.backward =
-y > 15;
-
-movement.left =
-x < -15;
-
-movement.right =
-x > 15;
-}
-);
-
-
-joystick.addEventListener(
-"touchend",
-function() {
-
-movement.forward = false;
-movement.backward = false;
-movement.left = false;
-movement.right = false;
-
-joystickStart = null;
-}
-);
-
-
-/* =========================
-LOOK CONTROL
-========================= */
-
-let lastTouchX = null;
-
-let lastTouchY = null;
+let lastY = null;
 
 
 window.addEventListener(
 "touchmove",
-function(event) {
+function(e) {
 
 if (
-event.touches.length !== 1
+e.touches.length !== 1
 )
 return;
 
 const touch =
-event.touches[0];
+e.touches[0];
 
 if (
 touch.clientX < 140
 )
 return;
 
-if (lastTouchX !== null) {
+if (
+lastX !== null
+) {
 
 const dx =
 touch.clientX -
-lastTouchX;
+lastX;
 
 const dy =
 touch.clientY -
-lastTouchY;
+lastY;
 
 yaw -=
 dx * 0.004;
@@ -662,18 +670,18 @@ dy * 0.003;
 
 pitch =
 Math.max(
--1.2,
+-1.1,
 Math.min(
-1.2,
+1.1,
 pitch
 )
 );
 }
 
-lastTouchX =
+lastX =
 touch.clientX;
 
-lastTouchY =
+lastY =
 touch.clientY;
 }
 );
@@ -683,110 +691,140 @@ window.addEventListener(
 "touchend",
 function() {
 
-lastTouchX = null;
-lastTouchY = null;
+lastX = null;
 
+lastY = null;
 }
 );
 
 
-/* =========================
-STORY MESSAGE
-========================= */
+// ================================
+// SIMPLE MOBILE MOVE
+// ================================
 
-const story =
-document.createElement("div");
+let moveForward = false;
 
-story.style.position =
-"fixed";
+let moveBackward = false;
 
-story.style.left =
-"0";
 
-story.style.right =
-"0";
+window.addEventListener(
+"touchstart",
+function(e) {
 
-story.style.bottom =
-"120px";
+const touch =
+e.touches[0];
 
-story.style.textAlign =
-"center";
+if (
+touch.clientX < 140
+) {
 
-story.style.color =
-"white";
-
-story.style.fontSize =
-"18px";
-
-story.style.textShadow =
-"0 2px 5px black";
-
-story.style.zIndex =
-"30";
-
-document.body.appendChild(
-story
+moveForward = true;
+}
+}
 );
 
 
-function say(text, time = 4000) {
-
-story.innerText =
-text;
-
-setTimeout(
+window.addEventListener(
+"touchend",
 function() {
 
-story.innerText =
-"";
+moveForward = false;
 
-},
-time
+moveBackward = false;
+}
+);
+
+
+// ================================
+// MOVEMENT
+// ================================
+
+function move(delta) {
+
+if (!started)
+return;
+
+
+let forward = 0;
+
+let sideways = 0;
+
+
+if (keys.w)
+forward += 1;
+
+if (keys.s)
+forward -= 1;
+
+if (keys.a)
+sideways -= 1;
+
+if (keys.d)
+sideways += 1;
+
+
+if (moveForward)
+forward += 1;
+
+
+if (
+forward === 0 &&
+sideways === 0
+)
+return;
+
+
+const direction =
+new THREE.Vector3(
+sideways,
+0,
+-forward
+);
+
+direction.normalize();
+
+direction.applyAxisAngle(
+new THREE.Vector3(0,1,0),
+yaw
+);
+
+camera.position.add(
+direction.multiplyScalar(
+delta * 5
+)
+);
+
+
+camera.position.x =
+Math.max(
+-8,
+Math.min(
+8,
+camera.position.x
+)
+);
+
+
+camera.position.z =
+Math.max(
+-125,
+Math.min(
+10,
+camera.position.z
+)
 );
 }
 
 
-/* =========================
-OBJECTIVE
-========================= */
-
-const objective =
-document.createElement("div");
-
-objective.style.position =
-"fixed";
-
-objective.style.top =
-"20px";
-
-objective.style.left =
-"20px";
-
-objective.style.color =
-"white";
-
-objective.style.background =
-"rgba(0,0,0,0.35)";
-
-objective.style.padding =
-"10px 15px";
-
-objective.style.zIndex =
-"30";
-
-objective.innerText =
-"目標：探索屯門碼頭";
-
-document.body.appendChild(
-objective
-);
-
-
-/* =========================
-STORY TRIGGER
-========================= */
+// ================================
+// STORY
+// ================================
 
 function storyCheck() {
+
+if (!started)
+return;
+
 
 const z =
 camera.position.z;
@@ -800,19 +838,18 @@ z < -45 &&
 
 radioFound = true;
 
-objective.innerText =
+mission.innerText =
 "目標：調查神秘收音機";
 
-say(
-"收音機：……Amy……你聽得到嗎？"
-);
+text.innerText =
+"收音機：……Amy……你聽得到嗎？";
+
 
 setTimeout(
 function() {
 
-say(
-"收音機：去碼頭下面……Daniel 喺等你。"
-);
+text.innerText =
+"收音機：去碼頭下面……Daniel 喺等你。";
 
 },
 3500
@@ -827,12 +864,11 @@ z < -80
 
 chapter = 2;
 
-objective.innerText =
+mission.innerText =
 "CHAPTER 2：地下避難所";
 
-say(
-"Amy：Daniel……你仲生存緊？"
-);
+text.innerText =
+"Amy：Daniel……你仲生存緊？";
 }
 
 
@@ -844,137 +880,133 @@ z < -110 &&
 
 danielFound = true;
 
-objective.innerText =
+mission.innerText =
 "找到 Daniel";
 
-say(
-"Daniel：Amy……"
-);
+text.innerText =
+"Daniel：Amy……";
+
 
 setTimeout(
 function() {
 
-say(
-"Amy：Daniel……真係你？"
-);
+text.innerText =
+"Amy：Daniel……真係你？";
 
 },
-3000
+3500
 );
+
 
 setTimeout(
-startEnding,
-7000
+ending,
+7500
 );
 }
 }
 
 
-/* =========================
-ENDING
-========================= */
+// ================================
+// ENDING
+// ================================
 
-function startEnding() {
-
-if (ending)
-return;
-
-ending = true;
+function ending() {
 
 chapter = 3;
 
-objective.innerText =
+mission.innerText =
 "CHAPTER 3：A NEW BEGINNING";
 
-say(
-"五年後……"
-);
+
+text.innerText =
+"五年後……";
+
 
 setTimeout(
 function() {
 
-say(
-"Amy 同 Daniel 開始喺海邊建立生存區。"
-);
+text.innerText =
+"Amy 同 Daniel 開始喺海邊建立新嘅生存區。";
 
 },
 4000
 );
 
+
 setTimeout(
 function() {
 
-say(
-"由兩個人，到一個社區。"
-);
+text.innerText =
+"由兩個人，到一個社區。";
 
 },
 8000
 );
 
+
 setTimeout(
 function() {
 
-say(
-"由生存，到生活。"
-);
+text.innerText =
+"由生存，到生活。";
 
 },
 12000
 );
 
+
 setTimeout(
 function() {
 
-say(
-"Year 10"
-);
+text.innerText =
+"Year 10";
 
 },
 16000
 );
 
+
 setTimeout(
 function() {
 
-say(
-"Amy 同 Daniel 結婚，並建立咗屬於自己嘅家庭。"
-);
+text.innerText =
+"Amy 同 Daniel 結婚，並育有孩子。";
 
 },
 20000
 );
 
+
 setTimeout(
 function() {
 
-say(
-"佢哋嘅孩子，喺海邊嘅新世界長大。"
-);
+text.innerText =
+"佢哋嘅孩子，喺海邊嘅新世界長大。";
 
 },
 24000
 );
 
+
 setTimeout(
 function() {
 
-say(
-"世界曾經毀滅……但人類重新開始。"
-);
+text.innerText =
+"世界曾經毀滅……但人類重新開始。";
 
 },
 28000
 );
 
+
 setTimeout(
 function() {
 
-story.innerText =
+text.innerText =
 "THE WORLD ENDED. WE BEGAN AGAIN.";
 
-story.style.fontSize =
-"25px";
+text.style.fontSize =
+"26px";
 
 },
 32000
@@ -982,83 +1014,9 @@ story.style.fontSize =
 }
 
 
-/* =========================
-MOVEMENT
-========================= */
-
-function updateMovement(delta) {
-
-const speed =
-5 * delta;
-
-let forward = 0;
-
-let sideways = 0;
-
-
-if (movement.forward)
-forward += 1;
-
-if (movement.backward)
-forward -= 1;
-
-if (movement.right)
-sideways += 1;
-
-if (movement.left)
-sideways -= 1;
-
-
-const direction =
-new THREE.Vector3(
-sideways,
-0,
--forward
-);
-
-
-if (
-direction.length() > 0
-) {
-
-direction.normalize();
-
-direction.applyAxisAngle(
-new THREE.Vector3(0,1,0),
-yaw
-);
-
-camera.position.add(
-direction.multiplyScalar(
-speed
-)
-);
-}
-
-
-camera.position.x =
-Math.max(
--8,
-Math.min(
-8,
-camera.position.x
-)
-);
-
-camera.position.z =
-Math.max(
--125,
-Math.min(
-10,
-camera.position.z
-)
-);
-}
-
-
-/* =========================
-CAMERA
-========================= */
+// ================================
+// CAMERA
+// ================================
 
 function updateCamera() {
 
@@ -1073,22 +1031,24 @@ pitch;
 }
 
 
-/* =========================
-GAME LOOP
-========================= */
+// ================================
+// GAME LOOP
+// ================================
 
 let previous =
 performance.now();
 
 
-function animate() {
+function gameLoop() {
 
 requestAnimationFrame(
-animate
+gameLoop
 );
+
 
 const now =
 performance.now();
+
 
 const delta =
 Math.min(
@@ -1096,16 +1056,17 @@ Math.min(
 0.05
 );
 
+
 previous =
 now;
 
-updateMovement(
-delta
-);
+
+move(delta);
 
 updateCamera();
 
 storyCheck();
+
 
 renderer.render(
 scene,
@@ -1114,12 +1075,12 @@ camera
 }
 
 
-animate();
+gameLoop();
 
 
-/* =========================
-RESIZE
-========================= */
+// ================================
+// RESIZE
+// ================================
 
 window.addEventListener(
 "resize",
@@ -1135,27 +1096,5 @@ renderer.setSize(
 window.innerWidth,
 window.innerHeight
 );
-}
-);
-
-const startButton =
-document.getElementById("startButton");
-
-const startScreen =
-document.getElementById("startScreen");
-
-startButton.addEventListener(
-"click",
-function() {
-
-startScreen.style.display =
-"none";
-
-say(
-"Amy：五年了……我終於再次回到屯門碼頭。"
-);
-
-objective.innerText =
-"目標：探索屯門碼頭";
 }
 );
