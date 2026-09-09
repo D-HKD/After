@@ -434,8 +434,8 @@ scene.add(leaves);
 const sea =
 new THREE.Mesh(
 new THREE.PlaneGeometry(
-120,
-120
+100,
+80
 ),
 waterMaterial
 );
@@ -444,9 +444,9 @@ sea.rotation.x =
 -Math.PI / 2;
 
 sea.position.set(
--60,
--0.1,
--40
+0,
+-0.15,
+-105
 );
 
 scene.add(sea);
@@ -625,13 +625,85 @@ keys.d = false;
 
 
 // ================================
-// MOBILE LOOK
+// CAMERA LOOK
+// 電腦：滑鼠
+// 手機：手指
 // ================================
 
 let lastX = null;
-
 let lastY = null;
 
+let mouseLooking = false;
+
+// -------------------------------
+// 電腦滑鼠按住左鍵轉視角
+// -------------------------------
+
+window.addEventListener(
+"mousedown",
+function(e) {
+
+if (e.button === 0) {
+
+mouseLooking = true;
+
+lastX = e.clientX;
+lastY = e.clientY;
+}
+}
+);
+
+window.addEventListener(
+"mouseup",
+function() {
+
+mouseLooking = false;
+
+lastX = null;
+lastY = null;
+}
+);
+
+window.addEventListener(
+"mousemove",
+function(e) {
+
+if (!mouseLooking)
+return;
+
+const dx =
+e.clientX - lastX;
+
+const dy =
+e.clientY - lastY;
+
+
+yaw -=
+dx * 0.004;
+
+pitch -=
+dy * 0.003;
+
+pitch =
+Math.max(
+-1.1,
+Math.min(
+1.1,
+pitch
+)
+);
+
+lastX =
+e.clientX;
+
+lastY =
+e.clientY;
+}
+);
+
+// -------------------------------
+// 手機手指轉視角
+// -------------------------------
 
 window.addEventListener(
 "touchmove",
@@ -645,6 +717,7 @@ return;
 const touch =
 e.touches[0];
 
+// 左邊保留畀移動控制
 if (
 touch.clientX < 140
 )
@@ -683,9 +756,11 @@ touch.clientX;
 
 lastY =
 touch.clientY;
+},
+{
+passive: true
 }
 );
-
 
 window.addEventListener(
 "touchend",
@@ -696,7 +771,6 @@ lastX = null;
 lastY = null;
 }
 );
-
 
 // ================================
 // SIMPLE MOBILE MOVE
