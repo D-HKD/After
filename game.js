@@ -1582,7 +1582,7 @@ masterGain =
 audioContext.createGain();
 
 masterGain.gain.value =
-0.45;
+0.20;
 
 masterGain.connect(
 audioContext.destination
@@ -1607,7 +1607,7 @@ oceanGain =
 audioContext.createGain();
 
 oceanGain.gain.value =
-0.035;
+0.006;
 
 
 ocean.connect(
@@ -1639,7 +1639,7 @@ windGain =
 audioContext.createGain();
 
 windGain.gain.value =
-0.018;
+0.004;
 
 
 wind.connect(
