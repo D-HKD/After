@@ -1,368 +1,794 @@
+// ============================================================
+// AMY — FIVE YEARS AFTER
+// V8.1 CINEMATIC EDITION
+// COMPLETE game.js
+// ============================================================
+
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
-let scene, camera, renderer, clock;
+// ============================================================
+// GLOBAL
+// ============================================================
+
+let scene;
+let camera;
+let renderer;
+let clock;
+
 let gameStarted = false;
 let cinematic = false;
 let ending = false;
+
 let player;
-let daniel;
-let water;
+let daniel = null;
+
+let water = null;
+let flashlight = null;
+let flashlightTarget = null;
+
 let yaw = 0;
 let pitch = 0;
-let keys = {};
-let storyStep = 0;
-let reunionTime = 0;
 
-const startScreen = document.getElementById("startScreen");
-const startButton = document.getElementById("startButton");
+const keys = {};
+
+let storyStep = 0;
+let reunionStart = 0;
+let endingStart = 0;
+
+let touchLook = {
+active: false,
+x: 0,
+y: 0
+};
+
+let audioCtx = null;
+let audioMaster = null;
+
+let environmentObjects = [];
+
+const startScreen =
+document.getElementById("startScreen");
+
+const startButton =
+document.getElementById("startButton");
+
+// ============================================================
+// CONSTANTS
+// ============================================================
 
 const PLAYER_HEIGHT = 1.7;
 const WALK_SPEED = 4.2;
-const RUN_SPEED = 6.2;
+const RUN_SPEED = 6.3;
 
-const C = {
-ground: 0x555956,
-road: 0x282d2e,
-concrete: 0x777a76,
-building: 0x696d6a,
-glass: 0x30434a,
-metal: 0x454b4b,
-rail: 0x777b79,
-water: 0x315762,
-tree: 0x39483d,
-trunk: 0x4d4137,
-skin: 0xb98569,
-shirt: 0x3e4a4b,
-pants: 0x252a2b
-};
+const WORLD_MIN_Z = -160;
+const WORLD_MAX_Z = 35;
 
-function mat(color, rough = .8, metal = 0) {
+// ============================================================
+// MATERIALS
+// ============================================================
+
+function makeMaterial(
+color,
+roughness = 0.8,
+metalness = 0
+) {
+
 return new THREE.MeshStandardMaterial({
 color,
-roughness: rough,
-metalness: metal
+roughness,
+metalness
 });
 }
 
-function box(
-x,y,z,
-w,h,d,
+function makePhysical(
+color,
+roughness = 0.6,
+metalness = 0,
+clearcoat = 0
+) {
+
+return new THREE.MeshPhysicalMaterial({
+color,
+roughness,
+metalness,
+clearcoat,
+clearcoatRoughness: 0.35
+});
+}
+
+// ============================================================
+// GEOMETRY HELPERS
+// ============================================================
+
+function makeBox(
+x,
+y,
+z,
+width,
+height,
+depth,
 material,
 parent = scene
 ) {
-const mesh = new THREE.Mesh(
-new THREE.BoxGeometry(w,h,d),
+
+const mesh =
+new THREE.Mesh(
+new THREE.BoxGeometry(
+width,
+height,
+depth
+),
 material
 );
 
-mesh.position.set(x,y,z);
+mesh.position.set(
+x,
+y,
+z
+);
+
 mesh.castShadow = true;
 mesh.receiveShadow = true;
+
 parent.add(mesh);
 
 return mesh;
 }
 
-function cylinder(
-x,y,z,
-rt,rb,h,
+function makeCylinder(
+x,
+y,
+z,
+radiusTop,
+radiusBottom,
+height,
 material,
-parent = scene
+parent = scene,
+segments = 16
 ) {
-const mesh = new THREE.Mesh(
+
+const mesh =
+new THREE.Mesh(
 new THREE.CylinderGeometry(
-rt,rb,h,16
+radiusTop,
+radiusBottom,
+height,
+segments
 ),
 material
 );
 
-mesh.position.set(x,y,z);
+mesh.position.set(
+x,
+y,
+z
+);
+
 mesh.castShadow = true;
 mesh.receiveShadow = true;
+
 parent.add(mesh);
 
 return mesh;
 }
 
-function sphere(
-x,y,z,
-r,
+function makeSphere(
+x,
+y,
+z,
+radius,
 material,
 parent = scene
 ) {
-const mesh = new THREE.Mesh(
+
+const mesh =
+new THREE.Mesh(
 new THREE.SphereGeometry(
-r,20,14
+radius,
+20,
+14
 ),
 material
 );
 
-mesh.position.set(x,y,z);
+mesh.position.set(
+x,
+y,
+z
+);
+
 mesh.castShadow = true;
 mesh.receiveShadow = true;
+
 parent.add(mesh);
 
 return mesh;
 }
+
+// ============================================================
+// SCENE
+// ============================================================
+
+function createScene() {
+
+scene =
+new THREE.Scene();
+
+scene.background =
+new THREE.Color(
+0x69757a
+);
+
+scene.fog =
+new THREE.FogExp2(
+0x69757a,
+0.0085
+);
+
+camera =
+new THREE.PerspectiveCamera(
+68,
+window.innerWidth /
+window.innerHeight,
+0.05,
+500
+);
+
+camera.position.set(
+0,
+PLAYER_HEIGHT,
+28
+);
+
+renderer =
+new THREE.WebGLRenderer({
+antialias: true,
+powerPreference:
+"high-performance"
+});
+
+renderer.setPixelRatio(
+Math.min(
+window.devicePixelRatio || 1,
+1.6
+)
+);
+
+renderer.setSize(
+window.innerWidth,
+window.innerHeight
+);
+
+renderer.outputColorSpace =
+THREE.SRGBColorSpace;
+
+renderer.toneMapping =
+THREE.ACESFilmicToneMapping;
+
+renderer.toneMappingExposure =
+1.05;
+
+renderer.shadowMap.enabled =
+true;
+
+renderer.shadowMap.type =
+THREE.PCFSoftShadowMap;
+
+document.body.appendChild(
+renderer.domElement
+);
+
+clock =
+new THREE.Clock();
+}
+
+// ============================================================
+// LIGHTING
+// ============================================================
 
 function createLighting() {
 
-const hemi =
+const hemisphere =
 new THREE.HemisphereLight(
-0xb9c7cc,
-0x25282a,
+0xc5d0d3,
+0x202426,
 1.15
 );
 
-scene.add(hemi);
+scene.add(
+hemisphere
+);
 
 const sun =
 new THREE.DirectionalLight(
-0xd8e1e4,
+0xdce4e5,
 1.65
 );
 
 sun.position.set(
--45,75,30
+-55,
+75,
+35
 );
 
 sun.castShadow = true;
 
-sun.shadow.mapSize.width = 2048;
-sun.shadow.mapSize.height = 2048;
+sun.shadow.mapSize.width =
+2048;
 
-sun.shadow.camera.left = -100;
-sun.shadow.camera.right = 100;
-sun.shadow.camera.top = 100;
-sun.shadow.camera.bottom = -100;
+sun.shadow.mapSize.height =
+2048;
 
-scene.add(sun);
+sun.shadow.camera.left =
+-100;
+
+sun.shadow.camera.right =
+100;
+
+sun.shadow.camera.top =
+100;
+
+sun.shadow.camera.bottom =
+-100;
+
+sun.shadow.camera.near =
+1;
+
+sun.shadow.camera.far =
+250;
+
+scene.add(
+sun
+);
 
 const fill =
 new THREE.DirectionalLight(
-0x8298ad,
-.32
+0x8da2b4,
+0.32
 );
 
 fill.position.set(
-50,35,-100
+60,
+35,
+-100
 );
 
-scene.add(fill);
+scene.add(
+fill
+);
 }
+
+// ============================================================
+// GROUND
+// ============================================================
 
 function createGround() {
 
-const ground = new THREE.Mesh(
+const ground =
+new THREE.Mesh(
 new THREE.PlaneGeometry(
-150,250,50,80
+150,
+250,
+50,
+80
 ),
-mat(C.ground,.95)
+makeMaterial(
+0x555a57,
+0.96
+)
 );
 
 ground.rotation.x =
 -Math.PI / 2;
 
 ground.position.set(
-0,-2,-55
+0,
+-2,
+-60
 );
 
-ground.receiveShadow = true;
+ground.receiveShadow =
+true;
 
-scene.add(ground);
+scene.add(
+ground
+);
 }
+
+// ============================================================
+// ROAD
+// ============================================================
 
 function createRoad() {
 
-box(
-0,-1.94,-45,
-18,.12,190,
-mat(C.road,.98)
+const road =
+makeMaterial(
+0x282d2e,
+0.98
 );
 
-const line = mat(
-0xc8c5aa,.8
+makeBox(
+0,
+-1.94,
+-48,
+18,
+0.12,
+195,
+road
 );
 
-for(
-let z=45;
-z>-135;
-z-=8
+const line =
+makeMaterial(
+0xc8c5a9,
+0.8
+);
+
+for (
+let z = 42;
+z > -142;
+z -= 8
 ) {
-box(
-0,-1.86,z,
-.14,.025,3.8,
+
+makeBox(
+0,
+-1.86,
+z,
+0.14,
+0.025,
+3.7,
+line
+);
+}
+
+// Crossing
+
+for (
+let i = -4;
+i <= 4;
+i++
+) {
+
+makeBox(
+i * 1.6,
+-1.86,
+-60,
+0.9,
+0.025,
+5,
 line
 );
 }
 }
 
+// ============================================================
+// BUILDINGS
+// ============================================================
+
 function createBuilding(
-x,z,w,h,d,color
+x,
+z,
+width,
+height,
+depth,
+color
 ) {
 
 const group =
 new THREE.Group();
 
 group.position.set(
-x,-2,z
+x,
+-2,
+z
 );
 
 scene.add(group);
 
-box(
-0,h/2,0,
-w,h,d,
-mat(color,.88),
+const wall =
+makePhysical(
+color,
+0.88,
+0.02
+);
+
+makeBox(
+0,
+height / 2,
+0,
+width,
+height,
+depth,
+wall,
 group
 );
 
-box(
-0,h+.18,0,
-w+.3,.3,d+.3,
-mat(0x424647,.9,.15),
+const roof =
+makeMaterial(
+0x414546,
+0.92,
+0.05
+);
+
+makeBox(
+0,
+height + 0.18,
+0,
+width + 0.3,
+0.35,
+depth + 0.3,
+roof,
 group
 );
 
 const glass =
 new THREE.MeshPhysicalMaterial({
-color:C.glass,
-roughness:.18,
-metalness:.08,
-transmission:.03
+color: 0x304249,
+roughness: 0.18,
+metalness: 0.08,
+clearcoat: 0.7
 });
 
 const rows =
 Math.max(
 1,
-Math.floor(h/3)
+Math.floor(
+height / 3
+)
 );
 
-const cols =
+const columns =
 Math.max(
 2,
-Math.floor(w/3)
+Math.floor(
+width / 3
+)
 );
 
-for(
-let r=0;
-r<rows;
+for (
+let r = 0;
+r < rows;
 r++
 ) {
 
-for(
-let c=0;
-c<cols;
+for (
+let c = 0;
+c < columns;
 c++
 ) {
 
-const wx =
--w/2+1.3+
-c*((w-2.6)/
-Math.max(1,cols-1));
+const px =
+-width / 2 +
+1.3 +
+c *
+(
+(width - 2.6) /
+Math.max(
+1,
+columns - 1
+)
+);
 
-const wy =
-2+r*2.8;
+const py =
+2 +
+r * 2.8;
 
-if(
-wy>h-1
-) continue;
+if (
+py >
+height - 1
+) {
+continue;
+}
 
-box(
-wx,wy,d/2+.02,
-.9,1.25,.04,
+makeBox(
+px,
+py,
+depth / 2 + 0.03,
+0.9,
+1.25,
+0.04,
 glass,
 group
 );
 }
+}
+
+// Air conditioners
+
+const ac =
+makeMaterial(
+0xb4b7b4,
+0.72,
+0.15
+);
+
+const acCount =
+Math.max(
+2,
+Math.floor(
+width / 8
+)
+);
+
+for (
+let i = 0;
+i < acCount;
+i++
+) {
+
+const ax =
+-width / 2 +
+3 +
+i *
+(
+(width - 6) /
+Math.max(
+1,
+acCount - 1
+)
+);
+
+makeBox(
+ax,
+Math.min(
+height - 1.2,
+5
+),
+depth / 2 + 0.35,
+1.05,
+0.7,
+0.55,
+ac,
+group
+);
 }
 }
 
 function createBuildings() {
 
 createBuilding(
--29,-25,
-30,18,23,
+-29,
+-25,
+30,
+18,
+23,
 0x777b78
 );
 
 createBuilding(
-30,-18,
-28,22,24,
+30,
+-18,
+28,
+22,
+24,
 0x686d6a
 );
 
 createBuilding(
--30,-77,
-25,15,20,
+-30,
+-77,
+25,
+15,
+20,
 0x746f67
 );
 
 createBuilding(
-31,-94,
-30,20,27,
+31,
+-94,
+30,
+20,
+27,
 0x656967
 );
 
 createBuilding(
--30,-130,
-33,19,26,
+-30,
+-130,
+33,
+19,
+26,
 0x6d716d
 );
+
+createBuilding(
+29,
+-140,
+26,
+16,
+21,
+0x626866
+);
 }
+
+// ============================================================
+// LRT
+// ============================================================
 
 function createLRT() {
 
 const rail =
-mat(C.rail,.38,.8);
+makeMaterial(
+0x696f70,
+0.35,
+0.8
+);
 
 const sleeper =
-mat(0x454947,.92);
+makeMaterial(
+0x454947,
+0.92
+);
 
-for(
-const x of [-3.2,3.2]
+for (
+const x of [-3.2, 3.2]
 ) {
-box(
-x,-1.73,-35,
-.15,.18,205,
+
+makeBox(
+x,
+-1.73,
+-35,
+0.16,
+0.18,
+205,
 rail
 );
 }
 
-for(
-let z=60;
-z>-135;
-z-=2.1
+for (
+let z = 60;
+z > -140;
+z -= 2.1
 ) {
-box(
-0,-1.82,z,
-8,.16,.35,
+
+makeBox(
+0,
+-1.82,
+z,
+8,
+0.16,
+0.35,
 sleeper
 );
 }
 
 const pole =
-mat(0x515858,.58,.4);
+makeMaterial(
+0x515858,
+0.58,
+0.4
+);
 
-for(
-let z=50;
-z>-130;
-z-=18
+for (
+let z = 50;
+z > -135;
+z -= 18
 ) {
 
-cylinder(
--6.5,3,z,
-.09,.13,10,
+makeCylinder(
+-6.5,
+3,
+z,
+0.09,
+0.13,
+10,
 pole
 );
 
-box(
--2.8,7.8,z,
-7.3,.1,.1,
+makeBox(
+-2.8,
+7.8,
+z,
+7.3,
+0.1,
+0.1,
 pole
 );
 }
 }
+
+// ============================================================
+// LRT STATION
+// ============================================================
 
 function createStation() {
 
@@ -370,79 +796,104 @@ const station =
 new THREE.Group();
 
 station.position.set(
-0,-2,-63
+0,
+-2,
+-63
 );
 
-scene.add(station);
-
-box(
-0,.12,0,
-15,.3,10,
-mat(C.concrete,.9),
+scene.add(
 station
 );
 
-box(
-0,5,0,
-16,.3,11,
-mat(0x555b5b,.65,.2),
+makeBox(
+0,
+0.12,
+0,
+15,
+0.3,
+10,
+makeMaterial(
+0x80837f,
+0.9
+),
+station
+);
+
+makeBox(
+0,
+5,
+0,
+16,
+0.3,
+11,
+makeMaterial(
+0x555b5b,
+0.65,
+0.2
+),
 station
 );
 
 const pillar =
-mat(0x5e6361,.75);
+makeMaterial(
+0x5e6361,
+0.75
+);
 
-for(
-const x of [-6.5,6.5]
+for (
+const x of [-6.5, 6.5]
 ) {
-for(
-const z of [-4.2,4.2]
+
+for (
+const z of [-4.2, 4.2]
 ) {
-cylinder(
-x,2.5,z,
-.22,.27,5,
+
+makeCylinder(
+x,
+2.5,
+z,
+0.22,
+0.27,
+5,
 pillar,
 station
 );
 }
 }
 
-box(
-0,4.05,5.55,
-7,1.2,.12,
-mat(0xd4d8d3,.55),
+makeBox(
+0,
+4.05,
+5.55,
+7,
+1.2,
+0.12,
+makeMaterial(
+0xd7dad5,
+0.55
+),
 station
 );
 }
 
-function createCars() {
-
-createCar(
--5,-20,0,0x555e62
-);
-
-createCar(
-5,-34,Math.PI,0x77716a
-);
-
-createCar(
--5,-76,0,0x4b5558
-);
-
-createCar(
-5,-91,Math.PI,0x67635e
-);
-}
+// ============================================================
+// VEHICLES
+// ============================================================
 
 function createCar(
-x,z,rotation,color
+x,
+z,
+rotation,
+color
 ) {
 
 const car =
 new THREE.Group();
 
 car.position.set(
-x,-1.7,z
+x,
+-1.7,
+z
 );
 
 car.rotation.y =
@@ -451,67 +902,201 @@ rotation;
 scene.add(car);
 
 const body =
-mat(color,.42,.28);
+makePhysical(
+color,
+0.42,
+0.28,
+0.25
+);
 
-box(
-0,.7,0,
-3.1,.72,5.4,
+makeBox(
+0,
+0.7,
+0,
+3.1,
+0.72,
+5.4,
 body,
 car
 );
 
-box(
-0,1.3,-.2,
-2.6,.8,2.8,
+makeBox(
+0,
+1.3,
+-0.2,
+2.6,
+0.8,
+2.8,
 body,
 car
 );
 
 const glass =
 new THREE.MeshPhysicalMaterial({
-color:0x26363b,
-roughness:.15,
-metalness:.1
+color: 0x26363b,
+roughness: 0.15,
+metalness: 0.1
 });
 
-box(
-0,1.35,-.2,
-2.25,.55,2.35,
+makeBox(
+0,
+1.35,
+-0.2,
+2.25,
+0.55,
+2.35,
 glass,
 car
 );
 
 const wheel =
-mat(0x171919,.75,.1);
+makeMaterial(
+0x171919,
+0.75,
+0.1
+);
 
-for(
-const wx of [-1.45,1.45]
+for (
+const wx of [-1.45, 1.45]
 ) {
-for(
-const wz of [-1.75,1.75]
+
+for (
+const wz of [-1.75, 1.75]
 ) {
 
 const w =
-cylinder(
-wx,.4,wz,
-.45,.45,.28,
+makeCylinder(
+wx,
+0.4,
+wz,
+0.45,
+0.45,
+0.28,
 wheel,
 car
 );
 
 w.rotation.z =
-Math.PI/2;
+Math.PI / 2;
 }
 }
 }
 
-function createTrees() {
+function createVehicles() {
 
-const leaf =
-mat(C.tree,.96);
+createCar(
+-5,
+-20,
+0,
+0x555e62
+);
+
+createCar(
+5,
+-34,
+Math.PI,
+0x77716a
+);
+
+createCar(
+-5,
+-76,
+0,
+0x4b5558
+);
+
+createCar(
+5,
+-91,
+Math.PI,
+0x67635e
+);
+
+createCar(
+5,
+-111,
+Math.PI,
+0x4f5756
+);
+}
+
+// ============================================================
+// VEGETATION
+// ============================================================
+
+function createTree(
+x,
+z,
+scale = 1
+) {
+
+const tree =
+new THREE.Group();
+
+tree.position.set(
+x,
+-2,
+z
+);
+
+tree.scale.setScalar(
+scale
+);
+
+scene.add(tree);
 
 const trunk =
-mat(C.trunk,.95);
+makeMaterial(
+0x4c4035,
+0.96
+);
+
+const leaves =
+makeMaterial(
+0x39483d,
+0.98
+);
+
+makeCylinder(
+0,
+2,
+0,
+0.2,
+0.3,
+4,
+trunk,
+tree
+);
+
+makeSphere(
+-0.4,
+4.3,
+0,
+1.25,
+leaves,
+tree
+);
+
+makeSphere(
+0.5,
+4.5,
+0.1,
+1.45,
+leaves,
+tree
+);
+
+makeSphere(
+0,
+5.2,
+-0.3,
+1.15,
+leaves,
+tree
+);
+}
+
+function createVegetation() {
 
 const positions = [
 [-24,15,1],
@@ -526,113 +1111,258 @@ const positions = [
 ];
 
 positions.forEach(
-p => {
-
-const tree =
-new THREE.Group();
-
-tree.position.set(
-p[0],-2,p[1]
-);
-
-tree.scale.setScalar(
+p => createTree(
+p[0],
+p[1],
 p[2]
+)
 );
 
-scene.add(tree);
-
-cylinder(
-0,2,0,
-.2,.3,4,
-trunk,
-tree
+const weeds =
+makeMaterial(
+0x465540,
+0.99
 );
 
-sphere(
--.4,4.3,0,
-1.25,
-leaf,
-tree
-);
-
-sphere(
-.5,4.5,.1,
-1.45,
-leaf,
-tree
-);
-
-sphere(
-0,5.2,-.3,
-1.15,
-leaf,
-tree
-);
-}
-);
-}
-
-function createDebris() {
-
-const concrete =
-mat(0x555957,.94);
-
-const metal =
-mat(0x3e4444,.7,.55);
-
-for(
-let i=0;
-i<90;
+for (
+let i = 0;
+i < 130;
 i++
 ) {
 
 const x =
 THREE.MathUtils.randFloat(
--8,8
+-65,
+65
 );
 
 const z =
 THREE.MathUtils.randFloat(
--145,45
+-155,
+40
 );
 
-if(
-Math.abs(x)<3
-) continue;
+if (
+Math.abs(x) < 10
+) {
+continue;
+}
+
+const h =
+THREE.MathUtils.randFloat(
+0.15,
+0.7
+);
+
+const weed =
+makeBox(
+x,
+-1.8 + h / 2,
+z,
+0.035,
+h,
+0.035,
+weeds
+);
+
+weed.rotation.y =
+Math.random() *
+Math.PI;
+}
+}
+
+// ============================================================
+// DEBRIS
+// ============================================================
+
+function createDebris() {
+
+const concrete =
+makeMaterial(
+0x555957,
+0.95
+);
+
+const metal =
+makeMaterial(
+0x3d4444,
+0.72,
+0.55
+);
+
+for (
+let i = 0;
+i < 90;
+i++
+) {
+
+const x =
+THREE.MathUtils.randFloat(
+-8,
+8
+);
+
+const z =
+THREE.MathUtils.randFloat(
+-145,
+35
+);
+
+if (
+Math.abs(x) < 3
+) {
+continue;
+}
 
 const w =
 THREE.MathUtils.randFloat(
-.15,1.4
+0.15,
+1.4
 );
 
 const h =
 THREE.MathUtils.randFloat(
-.08,.5
+0.08,
+0.5
 );
 
 const d =
 THREE.MathUtils.randFloat(
-.15,1
+0.15,
+1
 );
 
 const object =
-box(
+makeBox(
 x,
--1.9+h/2,
+-1.9 + h / 2,
 z,
-w,h,d,
-Math.random()>.65
+w,
+h,
+d,
+Math.random() > .65
 ? metal
 : concrete
 );
 
 object.rotation.set(
-Math.random()*.5,
-Math.random()*Math.PI,
-Math.random()*.5
+Math.random() * .5,
+Math.random() *
+Math.PI,
+Math.random() * .5
 );
 }
 }
+
+// ============================================================
+// STREET LIGHTS
+// ============================================================
+
+function createStreetLight(
+x,
+z
+) {
+
+const group =
+new THREE.Group();
+
+group.position.set(
+x,
+-2,
+z
+);
+
+scene.add(group);
+
+const pole =
+makeMaterial(
+0x4c5251,
+0.58,
+0.4
+);
+
+makeCylinder(
+0,
+4,
+0,
+0.09,
+0.13,
+8,
+pole,
+group
+);
+
+const side =
+x < 0 ? -1 : 1;
+
+makeBox(
+side * 0.75,
+7.65,
+0,
+1.5,
+0.12,
+0.12,
+pole,
+group
+);
+
+const lampMat =
+new THREE.MeshStandardMaterial({
+color: 0xffd28c,
+emissive: 0xffa14d,
+emissiveIntensity: 1.7
+});
+
+makeBox(
+side * 1.45,
+7.52,
+0,
+0.48,
+0.18,
+0.32,
+lampMat,
+group
+);
+
+const light =
+new THREE.PointLight(
+0xffb96c,
+1.0,
+15
+);
+
+light.position.set(
+side * 1.45,
+7.35,
+0
+);
+
+group.add(light);
+}
+
+function createStreetLights() {
+
+for (
+let z = 45;
+z > -140;
+z -= 22
+) {
+
+createStreetLight(
+-11,
+z
+);
+
+createStreetLight(
+11,
+z - 8
+);
+}
+}
+
+// ============================================================
+// PIER
+// ============================================================
 
 function createPier() {
 
@@ -640,91 +1370,218 @@ const pier =
 new THREE.Group();
 
 pier.position.set(
-0,-2,-150
+0,
+-2,
+-150
 );
 
-scene.add(pier);
-
-box(
-0,.2,0,
-38,.45,50,
-mat(0x655e54,.82),
+scene.add(
 pier
 );
 
-const railing =
-mat(0x505756,.58,.45);
+const deck =
+makePhysical(
+0x665f55,
+0.82,
+0.04
+);
 
-for(
-let z=-23;
-z<=23;
-z+=3
+makeBox(
+0,
+0.2,
+0,
+38,
+0.45,
+50,
+deck,
+pier
+);
+
+const rail =
+makeMaterial(
+0x505756,
+0.58,
+0.45
+);
+
+for (
+let z = -23;
+z <= 23;
+z += 3
 ) {
 
-cylinder(
--18,1,z,
-.055,.07,2,
-railing,
+makeCylinder(
+-18,
+1,
+z,
+0.055,
+0.07,
+2,
+rail,
 pier
 );
 
-cylinder(
-18,1,z,
-.055,.07,2,
-railing,
+makeCylinder(
+18,
+1,
+z,
+0.055,
+0.07,
+2,
+rail,
 pier
 );
 }
 
-box(
--18,1.9,0,
-.1,.1,50,
-railing,
+makeBox(
+-18,
+1.9,
+0,
+0.1,
+0.1,
+50,
+rail,
 pier
 );
 
-box(
-18,1.9,0,
-.1,.1,50,
-railing,
+makeBox(
+18,
+1.9,
+0,
+0.1,
+0.1,
+50,
+rail,
 pier
 );
 
-for(
-let z=-21;
-z<=21;
-z+=7
+const post =
+makeMaterial(
+0x4b4e4c,
+0.9
+);
+
+for (
+let z = -21;
+z <= 21;
+z += 7
 ) {
 
-cylinder(
--13,-3.8,z,
-.35,.45,7,
-mat(0x4b4e4c,.9),
+makeCylinder(
+-13,
+-3.8,
+z,
+0.35,
+0.45,
+7,
+post,
 pier
 );
 
-cylinder(
-13,-3.8,z,
-.35,.45,7,
-mat(0x4b4e4c,.9),
+makeCylinder(
+13,
+-3.8,
+z,
+0.35,
+0.45,
+7,
+post,
 pier
 );
 }
 }
+
+// ============================================================
+// PIER LIGHTS
+// ============================================================
+
+function createPierLights() {
+
+const pole =
+makeMaterial(
+0x4b5050,
+0.6,
+0.4
+);
+
+const lamp =
+new THREE.MeshStandardMaterial({
+color: 0xffd18a,
+emissive: 0xff9e4d,
+emissiveIntensity: 2
+});
+
+const positions = [
+[-15,-145],
+[15,-145],
+[-15,-160],
+[15,-160],
+[-15,-174],
+[15,-174]
+];
+
+positions.forEach(
+p => {
+
+makeCylinder(
+p[0],
+2.4,
+p[1],
+0.07,
+0.1,
+4.8,
+pole
+);
+
+makeBox(
+p[0],
+4.8,
+p[1],
+0.38,
+0.18,
+0.38,
+lamp
+);
+
+const light =
+new THREE.PointLight(
+0xffb96d,
+0.85,
+12
+);
+
+light.position.set(
+p[0],
+4.5,
+p[1]
+);
+
+scene.add(light);
+}
+);
+}
+
+// ============================================================
+// WATER
+// ============================================================
 
 function createWater() {
 
 const geometry =
 new THREE.PlaneGeometry(
-220,120,80,50
+220,
+130,
+80,
+50
 );
 
 const material =
 new THREE.MeshPhysicalMaterial({
-color:C.water,
-roughness:.2,
-metalness:.18,
-clearcoat:.55
+color: 0x315762,
+roughness: 0.2,
+metalness: 0.18,
+clearcoat: 0.6,
+clearcoatRoughness: 0.2
 });
 
 water =
@@ -734,171 +1591,459 @@ material
 );
 
 water.rotation.x =
--Math.PI/2;
+-Math.PI / 2;
 
 water.position.set(
-0,-1.8,-178
+0,
+-1.8,
+-178
 );
 
-scene.add(water);
+scene.add(
+water
+);
 }
 
-function updateWater(time) {
+function updateWater(
+time
+) {
 
-if(!water) return;
+if (!water)
+return;
 
-const p =
+const position =
 water.geometry
-.attributes.position;
+.attributes
+.position;
 
-for(
-let i=0;
-i<p.count;
+for (
+let i = 0;
+i < position.count;
 i++
 ) {
 
 const x =
-p.getX(i);
+position.getX(i);
 
 const y =
-p.getY(i);
+position.getY(i);
 
-p.setZ(
+position.setZ(
 i,
 Math.sin(
-x*.055+time*.7
-)*.14 +
+x * .055 +
+time * .7
+) * .14 +
 Math.sin(
-y*.08+time*.5
-)*.08
+y * .08 +
+time * .5
+) * .08
 );
 }
 
-p.needsUpdate = true;
+position.needsUpdate =
+true;
 }
 
-function createStreetLights() {
+// ============================================================
+// BOAT
+// ============================================================
 
-const pole =
-mat(0x4b5150,.55,.4);
+function createBoat() {
 
-const lampMat =
-new THREE.MeshStandardMaterial({
-color:0xffd18a,
-emissive:0xffa24d,
-emissiveIntensity:1.8
-});
+const boat =
+new THREE.Group();
 
-for(
-let z=45;
-z>-130;
-z-=22
+boat.position.set(
+13,
+-0.7,
+-177
+);
+
+boat.rotation.y =
+-0.15;
+
+scene.add(boat);
+
+makeBox(
+0,
+0,
+0,
+4,
+.65,
+9,
+makePhysical(
+0x394449,
+.42,
+.3
+),
+boat
+);
+
+makeBox(
+0,
+.45,
+0,
+3.1,
+.35,
+6.8,
+makeMaterial(
+0x77736a,
+.85
+),
+boat
+);
+
+makeCylinder(
+0,
+1.6,
+0,
+.055,
+.07,
+3,
+makeMaterial(
+0x3f4646,
+.6,
+.4
+),
+boat
+);
+}
+
+// ============================================================
+// ATMOSPHERIC PARTICLES
+// ============================================================
+
+let dustParticles = null;
+
+function createDust() {
+
+const geometry =
+new THREE.BufferGeometry();
+
+const positions = [];
+
+for (
+let i = 0;
+i < 650;
+i++
 ) {
 
-cylinder(
--11,2,z,
-.09,.13,8,
-pole
+positions.push(
+THREE.MathUtils.randFloat(
+-50,
+50
+),
+THREE.MathUtils.randFloat(
+-1,
+11
+),
+THREE.MathUtils.randFloat(
+-165,
+40
+)
 );
-
-box(
--11,6.1,z,
-1.8,.1,.1,
-pole
-);
-
-box(
--11.9,6,z,
-.45,.18,.35,
-lampMat
-);
-
-const light =
-new THREE.PointLight(
-0xffbd78,
-1.1,
-14
-);
-
-light.position.set(
--11.9,5.9,z
-);
-
-scene.add(light);
 }
+
+geometry.setAttribute(
+"position",
+new THREE.Float32BufferAttribute(
+positions,
+3
+)
+);
+
+dustParticles =
+new THREE.Points(
+geometry,
+new THREE.PointsMaterial({
+color: 0xc0c6c3,
+size: .035,
+transparent: true,
+opacity: .25,
+depthWrite: false
+})
+);
+
+scene.add(
+dustParticles
+);
 }
+
+function updateDust(
+time
+) {
+
+if (!dustParticles)
+return;
+
+const position =
+dustParticles.geometry
+.attributes
+.position;
+
+for (
+let i = 0;
+i < position.count;
+i++
+) {
+
+let y =
+position.getY(i);
+
+y += .0018;
+
+if (y > 11)
+y = -1;
+
+position.setY(
+i,
+y
+);
+
+position.setX(
+i,
+position.getX(i) +
+Math.sin(
+time * .2 + i
+) * .0005
+);
+}
+
+position.needsUpdate =
+true;
+}
+
+// ============================================================
+// PLAYER
+// ============================================================
+
+function createPlayer() {
+
+player = {
+position:
+new THREE.Vector3(
+0,
+PLAYER_HEIGHT,
+28
+)
+};
+
+camera.position.copy(
+player.position
+);
+}
+
+// ============================================================
+// FLASHLIGHT
+// ============================================================
+
+function createFlashlight() {
+
+flashlight =
+new THREE.SpotLight(
+0xeaf3ff,
+3.8,
+30,
+Math.PI / 7,
+.4,
+1.3
+);
+
+flashlight.castShadow =
+true;
+
+flashlight.shadow.mapSize.width =
+1024;
+
+flashlight.shadow.mapSize.height =
+1024;
+
+flashlightTarget =
+new THREE.Object3D();
+
+scene.add(
+flashlightTarget
+);
+
+flashlight.target =
+flashlightTarget;
+
+scene.add(
+flashlight
+);
+}
+
+function updateFlashlight() {
+
+if (!flashlight)
+return;
+
+flashlight.position.copy(
+camera.position
+);
+
+const direction =
+new THREE.Vector3(
+0,
+0,
+-1
+);
+
+direction.applyQuaternion(
+camera.quaternion
+);
+
+flashlightTarget.position.copy(
+camera.position
+);
+
+flashlightTarget.position.add(
+direction.multiplyScalar(
+12
+)
+);
+}
+
+// ============================================================
+// CHARACTERS
+// ============================================================
 
 function createCharacter(
-shirtColor
+shirtColor,
+scale = 1
 ) {
 
 const group =
 new THREE.Group();
 
+group.scale.setScalar(
+scale
+);
+
 const skin =
-new THREE.MeshPhysicalMaterial({
-color:C.skin,
-roughness:.7,
-clearcoat:.12
-});
+makePhysical(
+0xb98569,
+.72,
+0,
+.12
+);
 
 const shirt =
-mat(
+makePhysical(
 shirtColor,
-.82
+.82,
+.02
 );
 
 const pants =
-mat(C.pants,.92);
+makeMaterial(
+0x252a2b,
+.92
+);
 
-box(
-0,1.45,0,
-.72,1.35,.42,
+const hair =
+makeMaterial(
+0x202020,
+.96
+);
+
+// Body
+
+makeBox(
+0,
+1.45,
+0,
+.72,
+1.35,
+.42,
 shirt,
 group
 );
 
-sphere(
-0,2.45,0,
+// Head
+
+makeSphere(
+0,
+2.45,
+0,
 .29,
 skin,
 group
 );
 
-sphere(
-0,2.63,-.01,
+// Hair
+
+makeSphere(
+0,
+2.63,
+-.01,
 .30,
-mat(0x202020,.95),
+hair,
 group
 );
 
-box(
--.19,.48,0,
-.3,.95,.34,
+// Legs
+
+makeBox(
+-.19,
+.48,
+0,
+.30,
+.95,
+.34,
 pants,
 group
 );
 
-box(
-.19,.48,0,
-.3,.95,.34,
+makeBox(
+.19,
+.48,
+0,
+.30,
+.95,
+.34,
 pants,
 group
 );
 
-cylinder(
--.48,1.45,0,
-.11,.13,1.2,
+// Arms
+
+const armL =
+makeCylinder(
+-.48,
+1.45,
+0,
+.11,
+.13,
+1.2,
 shirt,
 group
 );
 
-cylinder(
-.48,1.45,0,
-.11,.13,1.2,
+const armR =
+makeCylinder(
+.48,
+1.45,
+0,
+.11,
+.13,
+1.2,
 shirt,
 group
 );
+
+armL.rotation.z =
+-.08;
+
+armR.rotation.z =
+.08;
+
+group.userData.armL =
+armL;
+
+group.userData.armR =
+armR;
 
 return group;
 }
@@ -911,253 +2056,409 @@ createCharacter(
 );
 
 daniel.position.set(
-0,-2,-126
+0,
+-2,
+-126
 );
 
 daniel.rotation.y =
 Math.PI;
 
-daniel.visible = false;
-
-scene.add(daniel);
-}
-
-function createFlashlight() {
-
-const light =
-new THREE.SpotLight(
-0xeaf3ff,
-3.8,
-30,
-Math.PI/7,
-.4,
-1.3
-);
-
-light.castShadow = true;
-
-scene.add(light);
-
-player.flashlight =
-light;
-
-player.flashTarget =
-new THREE.Object3D();
+daniel.visible =
+false;
 
 scene.add(
-player.flashTarget
-);
-
-light.target =
-player.flashTarget;
-}
-
-function updateFlashlight() {
-
-if(
-!player.flashlight
-) return;
-
-player.flashlight.position.copy(
-camera.position
-);
-
-const dir =
-new THREE.Vector3(
-0,0,-1
-);
-
-dir.applyQuaternion(
-camera.quaternion
-);
-
-player.flashTarget.position.copy(
-camera.position
-);
-
-player.flashTarget.position.add(
-dir.multiplyScalar(12)
+daniel
 );
 }
 
-function createHUD() {
+// ============================================================
+// UI
+// ============================================================
 
-let hud =
-document.getElementById("hud");
-
-if(!hud) {
-
-hud =
-document.createElement("div");
-
-hud.id = "hud";
-
-hud.style.position =
-"fixed";
-
-hud.style.left =
-"18px";
-
-hud.style.top =
-"18px";
-
-hud.style.color =
-"#fff";
-
-hud.style.fontFamily =
-"Arial,sans-serif";
-
-hud.style.fontSize =
-"13px";
-
-hud.style.textShadow =
-"0 2px 8px #000";
-
-hud.style.zIndex =
-"2000";
-
-document.body.appendChild(hud);
-}
-
-hud.innerHTML =
-"屯門碼頭 — 五年後<br>" +
-"目標：尋找 Daniel";
-}
-
-function message(
+function showMessage(
 text,
-duration=4000
+duration = 4500
 ) {
 
-let el =
+let element =
 document.getElementById(
 "message"
 );
 
-if(!el) {
+if (!element) {
 
-el =
+element =
 document.createElement(
 "div"
 );
 
-el.id = "message";
+element.id =
+"message";
 
-el.style.position =
+element.style.position =
 "fixed";
 
-el.style.left =
+element.style.left =
 "50%";
 
-el.style.bottom =
-"12%";
+element.style.bottom =
+"11%";
 
-el.style.transform =
+element.style.transform =
 "translateX(-50%)";
 
-el.style.width =
+element.style.width =
 "90%";
 
-el.style.maxWidth =
-"850px";
+element.style.maxWidth =
+"900px";
 
-el.style.textAlign =
+element.style.textAlign =
 "center";
 
-el.style.color =
+element.style.color =
 "#fff";
 
-el.style.fontFamily =
+element.style.fontFamily =
 "Arial,sans-serif";
 
-el.style.fontSize =
+element.style.fontSize =
 "clamp(18px,3vw,28px)";
 
-el.style.lineHeight =
+element.style.lineHeight =
 "1.7";
 
-el.style.textShadow =
-"0 3px 14px #000";
+element.style.textShadow =
+"0 3px 15px rgba(0,0,0,.95)";
 
-el.style.zIndex =
+element.style.zIndex =
 "5000";
 
-el.style.pointerEvents =
+element.style.pointerEvents =
 "none";
 
-document.body.appendChild(el);
+element.style.transition =
+"opacity .6s";
+
+document.body.appendChild(
+element
+);
 }
 
-el.innerHTML = text;
-el.style.opacity = "1";
+element.innerHTML =
+text;
 
-clearTimeout(el.timer);
+element.style.opacity =
+"1";
 
-el.timer =
+clearTimeout(
+element._timer
+);
+
+element._timer =
 setTimeout(
-()=>{
-el.style.opacity =
+() => {
+element.style.opacity =
 "0";
 },
 duration
 );
 }
 
-function speak(text) {
+function createHUD() {
 
-if(
-!window.speechSynthesis
-) return;
+let element =
+document.getElementById(
+"hud"
+);
+
+if (!element) {
+
+element =
+document.createElement(
+"div"
+);
+
+element.id =
+"hud";
+
+element.style.position =
+"fixed";
+
+element.style.left =
+"18px";
+
+element.style.top =
+"18px";
+
+element.style.color =
+"#fff";
+
+element.style.fontFamily =
+"Arial,sans-serif";
+
+element.style.fontSize =
+"13px";
+
+element.style.lineHeight =
+"1.5";
+
+element.style.textShadow =
+"0 2px 8px #000";
+
+element.style.zIndex =
+"3000";
+
+element.style.pointerEvents =
+"none";
+
+document.body.appendChild(
+element
+);
+}
+
+element.innerHTML =
+"TUEN MUN — FIVE YEARS AFTER<br>" +
+"目標：尋找 Daniel";
+}
+
+// ============================================================
+// AUDIO
+// ============================================================
+
+function initAudio() {
+
+if (audioCtx)
+return;
+
+try {
+
+const AudioContext =
+window.AudioContext ||
+window.webkitAudioContext;
+
+if (!AudioContext)
+return;
+
+audioCtx =
+new AudioContext();
+
+audioMaster =
+audioCtx.createGain();
+
+audioMaster.gain.value =
+0.12;
+
+audioMaster.connect(
+audioCtx.destination
+);
+
+// Wind noise
+
+const buffer =
+audioCtx.createBuffer(
+1,
+audioCtx.sampleRate * 2,
+audioCtx.sampleRate
+);
+
+const data =
+buffer.getChannelData(0);
+
+for (
+let i = 0;
+i < data.length;
+i++
+) {
+
+data[i] =
+Math.random() * 2 - 1;
+}
+
+const source =
+audioCtx.createBufferSource();
+
+source.buffer =
+buffer;
+
+source.loop =
+true;
+
+const filter =
+audioCtx.createBiquadFilter();
+
+filter.type =
+"lowpass";
+
+filter.frequency.value =
+750;
+
+const gain =
+audioCtx.createGain();
+
+gain.gain.value =
+0.025;
+
+source
+.connect(filter)
+.connect(gain)
+.connect(audioMaster);
+
+source.start();
+
+} catch (error) {
+
+console.warn(
+"Audio unavailable",
+error
+);
+}
+}
+
+function playTone(
+frequency,
+duration = .5,
+volume = .025
+) {
+
+if (!audioCtx ||
+!audioMaster)
+return;
+
+try {
+
+const oscillator =
+audioCtx.createOscillator();
+
+const gain =
+audioCtx.createGain();
+
+oscillator.type =
+"sine";
+
+oscillator.frequency.value =
+frequency;
+
+gain.gain.setValueAtTime(
+.0001,
+audioCtx.currentTime
+);
+
+gain.gain.exponentialRampToValueAtTime(
+volume,
+audioCtx.currentTime + .03
+);
+
+gain.gain.exponentialRampToValueAtTime(
+.0001,
+audioCtx.currentTime +
+duration
+);
+
+oscillator
+.connect(gain)
+.connect(audioMaster);
+
+oscillator.start();
+
+oscillator.stop(
+audioCtx.currentTime +
+duration
+);
+
+} catch (error) {}
+}
+
+// ============================================================
+// CANTONESE VOICE
+// ============================================================
+
+function speak(
+text,
+rate = .9,
+pitchValue = 1
+) {
+
+if (
+!("speechSynthesis" in window)
+) {
+return;
+}
 
 try {
 
 speechSynthesis.cancel();
 
-const u =
+const utterance =
 new SpeechSynthesisUtterance(
 text
 );
 
-u.lang = "zh-HK";
-u.rate = .9;
-u.pitch = 1;
-u.volume = .8;
+utterance.lang =
+"zh-HK";
+
+utterance.rate =
+rate;
+
+utterance.pitch =
+pitchValue;
+
+utterance.volume =
+.8;
 
 const voices =
 speechSynthesis.getVoices();
 
-const voice =
+const cantonese =
 voices.find(
-v =>
-v.lang &&
+voice =>
+voice.lang &&
 (
-v.lang
+voice.lang
 .toLowerCase()
-.includes("zh-hk") ||
-v.lang
+.includes(
+"zh-hk"
+) ||
+voice.lang
 .toLowerCase()
-.includes("yue")
+.includes(
+"yue"
+)
 )
 );
 
-if(voice)
-u.voice = voice;
+if (cantonese) {
+utterance.voice =
+cantonese;
+}
 
-speechSynthesis.speak(u);
+speechSynthesis.speak(
+utterance
+);
 
-} catch(e) {
-console.warn(e);
+} catch (error) {
+
+console.warn(
+"Speech unavailable",
+error
+);
 }
 }
+
+// ============================================================
+// START GAME
+// ============================================================
 
 function startGame() {
 
-if(gameStarted)
+if (gameStarted)
 return;
 
-gameStarted = true;
+gameStarted =
+true;
 
-if(startScreen) {
+if (startScreen) {
 
 startScreen.style.display =
 "none";
@@ -1166,32 +2467,21 @@ startScreen.style.pointerEvents =
 "none";
 }
 
-try {
+initAudio();
 
-if(
-window.AudioContext ||
-window.webkitAudioContext
-) {
-const AC =
-window.AudioContext ||
-window.webkitAudioContext;
-
-const ctx =
-new AC();
-
-if(
-ctx.state ===
+if (
+audioCtx &&
+audioCtx.state ===
 "suspended"
 ) {
-ctx.resume();
-}
-}
 
-} catch(e) {}
+audioCtx.resume()
+.catch(() => {});
+}
 
 createHUD();
 
-message(
+showMessage(
 "五年後，屯門碼頭。<br>" +
 "Amy 開始尋找失聯已久嘅 Daniel。",
 5500
@@ -1202,25 +2492,35 @@ speak(
 );
 }
 
+// ============================================================
+// INPUT
+// ============================================================
+
 function setupInput() {
+
+// Start button
 
 document.addEventListener(
 "pointerdown",
-e => {
+event => {
 
-if(
-e.target &&
+const target =
+event.target;
+
+if (
+target &&
 (
-e.target.id ===
+target.id ===
 "startButton" ||
-e.target.closest?.(
+target.closest?.(
 "#startButton"
 )
 )
 ) {
 
-e.preventDefault();
-e.stopPropagation();
+event.preventDefault();
+event.stopPropagation();
+
 startGame();
 }
 
@@ -1230,21 +2530,25 @@ true
 
 document.addEventListener(
 "click",
-e => {
+event => {
 
-if(
-e.target &&
+const target =
+event.target;
+
+if (
+target &&
 (
-e.target.id ===
+target.id ===
 "startButton" ||
-e.target.closest?.(
+target.closest?.(
 "#startButton"
 )
 )
 ) {
 
-e.preventDefault();
-e.stopPropagation();
+event.preventDefault();
+event.stopPropagation();
+
 startGame();
 }
 
@@ -1252,123 +2556,269 @@ startGame();
 true
 );
 
+// Keyboard
+
 window.addEventListener(
 "keydown",
-e => {
-keys[e.code] = true;
+event => {
+
+keys[
+event.code
+] = true;
+
+if (
+[
+"KeyW",
+"KeyA",
+"KeyS",
+"KeyD",
+"ArrowUp",
+"ArrowDown",
+"ArrowLeft",
+"ArrowRight",
+"Space"
+].includes(
+event.code
+)
+) {
+
+event.preventDefault();
+}
 }
 );
 
 window.addEventListener(
 "keyup",
-e => {
-keys[e.code] = false;
+event => {
+
+keys[
+event.code
+] = false;
 }
 );
+
+// Mouse
 
 renderer.domElement.addEventListener(
 "click",
 () => {
 
-if(
+if (
 gameStarted &&
-!cinematic
+!cinematic &&
+!ending
 ) {
 
 try {
+
 renderer.domElement
 .requestPointerLock();
-} catch(e) {}
+
+} catch (error) {}
 }
 }
 );
 
 document.addEventListener(
 "mousemove",
-e => {
+event => {
 
-if(
+if (
 document.pointerLockElement !==
 renderer.domElement
-) return;
+) {
+return;
+}
 
-if(
+if (
 !gameStarted ||
 cinematic ||
 ending
-) return;
+) {
+return;
+}
 
 yaw -=
-e.movementX*.0022;
+event.movementX *
+.0022;
 
 pitch -=
-e.movementY*.0018;
+event.movementY *
+.0018;
 
 pitch =
 THREE.MathUtils.clamp(
 pitch,
--1.1,
-1.1
+-1.15,
+1.15
 );
 }
 );
+
+// Touch
+
+renderer.domElement.addEventListener(
+"touchstart",
+event => {
+
+if (!gameStarted)
+return;
+
+if (
+event.touches.length === 1
+) {
+
+touchLook.active =
+true;
+
+touchLook.x =
+event.touches[0]
+.clientX;
+
+touchLook.y =
+event.touches[0]
+.clientY;
 }
 
-function updatePlayer(delta) {
+},
+{
+passive: true
+}
+);
 
-if(
+renderer.domElement.addEventListener(
+"touchmove",
+event => {
+
+if (
+!touchLook.active ||
 !gameStarted ||
 cinematic ||
 ending
-) return;
+) {
+return;
+}
+
+const touch =
+event.touches[0];
+
+const dx =
+touch.clientX -
+touchLook.x;
+
+const dy =
+touch.clientY -
+touchLook.y;
+
+yaw -=
+dx * .005;
+
+pitch -=
+dy * .003;
+
+pitch =
+THREE.MathUtils.clamp(
+pitch,
+-1.15,
+1.15
+);
+
+touchLook.x =
+touch.clientX;
+
+touchLook.y =
+touch.clientY;
+
+},
+{
+passive: true
+}
+);
+
+renderer.domElement.addEventListener(
+"touchend",
+() => {
+
+touchLook.active =
+false;
+}
+);
+}
+
+// ============================================================
+// PLAYER MOVEMENT
+// ============================================================
+
+function updatePlayer(
+delta
+) {
+
+if (
+!gameStarted ||
+cinematic ||
+ending
+) {
+return;
+}
 
 let forward = 0;
 let side = 0;
 
-if(
+if (
 keys.KeyW ||
 keys.ArrowUp
-) forward++;
+) {
+forward++;
+}
 
-if(
+if (
 keys.KeyS ||
 keys.ArrowDown
-) forward--;
+) {
+forward--;
+}
 
-if(
+if (
 keys.KeyA ||
 keys.ArrowLeft
-) side--;
+) {
+side--;
+}
 
-if(
+if (
 keys.KeyD ||
 keys.ArrowRight
-) side++;
+) {
+side++;
+}
 
-const dir =
+const direction =
 new THREE.Vector3(
-0,0,-1
+0,
+0,
+-1
 );
 
-dir.applyQuaternion(
+direction.applyQuaternion(
 camera.quaternion
 );
 
-dir.y = 0;
-dir.normalize();
+direction.y = 0;
+
+direction.normalize();
 
 const right =
 new THREE.Vector3(
-dir.z,
+direction.z,
 0,
--dir.x
+-direction.x
 );
 
 const movement =
 new THREE.Vector3();
 
 movement.addScaledVector(
-dir,
+direction,
 forward
 );
 
@@ -1377,8 +2827,8 @@ right,
 side
 );
 
-if(
-movement.lengthSq()>0
+if (
+movement.lengthSq() > 0
 ) {
 
 movement.normalize();
@@ -1391,7 +2841,7 @@ keys.ShiftRight
 
 player.position.addScaledVector(
 movement,
-speed*delta
+speed * delta
 );
 }
 
@@ -1405,9 +2855,12 @@ player.position.x,
 player.position.z =
 THREE.MathUtils.clamp(
 player.position.z,
--145,
-30
+WORLD_MIN_Z,
+WORLD_MAX_Z
 );
+
+player.position.y =
+PLAYER_HEIGHT;
 
 camera.position.copy(
 player.position
@@ -1416,31 +2869,57 @@ player.position
 camera.rotation.order =
 "YXZ";
 
-camera.rotation.y = yaw;
-camera.rotation.x = pitch;
+camera.rotation.y =
+yaw;
+
+camera.rotation.x =
+pitch;
 
 updateFlashlight();
 }
 
-function checkStory() {
+// ============================================================
+// STORY
+// ============================================================
 
-if(
+function updateStory() {
+
+if (
 !gameStarted ||
 cinematic ||
 ending
-) return;
+) {
+return;
+}
 
 const z =
 camera.position.z;
 
-if(
+if (
 storyStep === 0 &&
 z < -42
 ) {
 
 storyStep = 1;
 
-message(
+showMessage(
+"街道已經被植物同荒廢車輛吞噬。",
+4500
+);
+
+speak(
+"呢度已經完全變晒。"
+);
+}
+
+else if (
+storyStep === 1 &&
+z < -62
+) {
+
+storyStep = 2;
+
+showMessage(
 "前面係荒廢咗嘅輕鐵站……",
 4500
 );
@@ -1450,14 +2929,14 @@ speak(
 );
 }
 
-else if(
-storyStep === 1 &&
-z < -72
+else if (
+storyStep === 2 &&
+z < -82
 ) {
 
-storyStep = 2;
+storyStep = 3;
 
-message(
+showMessage(
 "收音機突然收到微弱訊號……",
 4500
 );
@@ -1465,16 +2944,22 @@ message(
 speak(
 "有人收到嗎……請去碼頭。"
 );
+
+playTone(
+220,
+.8,
+.025
+);
 }
 
-else if(
-storyStep === 2 &&
-z < -100
+else if (
+storyStep === 3 &&
+z < -105
 ) {
 
-storyStep = 3;
+storyStep = 4;
 
-message(
+showMessage(
 "無線電：「Amy……如果係你……嚟碼頭。」",
 5000
 );
@@ -1484,139 +2969,248 @@ speak(
 );
 }
 
-else if(
-storyStep === 3 &&
-z < -119
+else if (
+storyStep === 4 &&
+z < -120
 ) {
 
-storyStep = 4;
+storyStep = 5;
 
 startReunion();
 }
 }
 
+// ============================================================
+// REUNION
+// ============================================================
+
 function startReunion() {
 
-cinematic = true;
-reunionTime =
+cinematic =
+true;
+
+reunionStart =
 performance.now();
 
-if(!daniel)
+if (!daniel) {
 createDaniel();
+}
 
-daniel.visible = true;
+daniel.visible =
+true;
 
 daniel.position.set(
-0,-2,-126
+0,
+-2,
+-126
 );
 
-message(
+daniel.rotation.y =
+Math.PI;
+
+showMessage(
 "遠處一個熟悉嘅身影慢慢轉身……",
-4500
+5000
 );
 
 speak(
 "Daniel……係你？"
 );
+
+playTone(
+330,
+1,
+.03
+);
 }
 
-function updateReunion(time) {
+function updateReunion(
+now
+) {
 
-if(!cinematic)
+if (!cinematic)
 return;
 
-const t =
-time -
-reunionTime;
+const elapsed =
+now -
+reunionStart;
 
-if(t < 3500) {
+// --------------------------------------------------------
+// 0 — 4 sec
+// Camera approaches
+// --------------------------------------------------------
 
-const p =
-THREE.MathUtils.clamp(
-t/3500,
-0,1
+if (
+elapsed < 4000
+) {
+
+const target =
+new THREE.Vector3(
+0,
+1.9,
+-119
 );
 
 camera.position.lerp(
-new THREE.Vector3(
-0,2,-119
-),
+target,
 .025
-);
-
-camera.lookAt(
-0,1.5,-126
-);
-}
-
-else if(t < 7000) {
-
-daniel.position.z =
-THREE.MathUtils.lerp(
--126,
--122,
-(t-3500)/3500
-);
-
-camera.lookAt(
-0,1.5,-123
-);
-
-}
-
-else if(t < 10500) {
-
-const p =
-(t-7000)/3500;
-
-daniel.position.z =
-THREE.MathUtils.lerp(
--122,
--119.8,
-p
-);
-
-camera.position.set(
-2.8-p*1.4,
-2.2,
--120.5-p*1.2
-);
-
-camera.lookAt(
-0,1.5,-120
-);
-
-}
-
-else if(t < 14000) {
-
-camera.position.set(
-1.4,
-2.0,
--122.5
 );
 
 camera.lookAt(
 0,
 1.45,
--120
+-126
+);
+}
+
+// --------------------------------------------------------
+// 4 — 8 sec
+// Daniel turns
+// --------------------------------------------------------
+
+else if (
+elapsed < 8000
+) {
+
+const p =
+THREE.MathUtils.clamp(
+(elapsed - 4000) /
+4000,
+0,
+1
 );
 
+daniel.rotation.y =
+THREE.MathUtils.lerp(
+Math.PI,
+Math.PI * 0.5,
+p
+);
+
+camera.position.set(
+0,
+2,
+-119
+);
+
+camera.lookAt(
+0,
+1.5,
+-126
+);
 }
+
+// --------------------------------------------------------
+// 8 — 12 sec
+// Daniel walks toward Amy
+// --------------------------------------------------------
+
+else if (
+elapsed < 12000
+) {
+
+const p =
+THREE.MathUtils.clamp(
+(elapsed - 8000) /
+4000,
+0,
+1
+);
+
+daniel.position.z =
+THREE.MathUtils.lerp(
+-126,
+-121,
+p
+);
+
+camera.position.set(
+2.8 -
+p * 1.4,
+2.1,
+-120.5 -
+p * 1.0
+);
+
+camera.lookAt(
+0,
+1.45,
+-121
+);
+}
+
+// --------------------------------------------------------
+// 12 — 16 sec
+// Reunion close-up
+// --------------------------------------------------------
+
+else if (
+elapsed < 16000
+) {
+
+camera.position.set(
+1.35,
+2.0,
+-122.7
+);
+
+camera.lookAt(
+0,
+1.5,
+-120.8
+);
+}
+
+// --------------------------------------------------------
+// 16 — 20 sec
+// Couple moment
+// --------------------------------------------------------
+
+else if (
+elapsed < 20000
+) {
+
+const p =
+THREE.MathUtils.clamp(
+(elapsed - 16000) /
+4000,
+0,
+1
+);
+
+camera.position.set(
+1.35 -
+p * .9,
+2.0 +
+p * .15,
+-122.7 -
+p * .8
+);
+
+camera.lookAt(
+0,
+1.45,
+-121
+);
+}
+
+// --------------------------------------------------------
+// End reunion
+// --------------------------------------------------------
 
 else {
 
-cinematic = false;
-
-message(
-"五年嘅等待，終於完結。<br>" +
-"Amy 同 Daniel 再次相遇。",
+showMessage(
+"Amy 同 Daniel 終於再次相遇。",
 5000
 );
 
 speak(
 "我等咗你好耐。"
 );
+
+cinematic =
+false;
 
 setTimeout(
 startEnding,
@@ -1625,117 +3219,270 @@ startEnding,
 }
 }
 
+// ============================================================
+// ENDING
+// ============================================================
+
 function startEnding() {
 
-ending = true;
+ending =
+true;
 
-if(
+endingStart =
+performance.now();
+
+if (
 document.pointerLockElement
 ) {
+
+try {
 document.exitPointerLock();
+} catch (error) {}
 }
 
 createSettlement();
 
-message(
-"數年後……",
-5000
+showEndingText(
+"FIVE YEARS LATER"
 );
 
 setTimeout(
-()=>{
-showEnding(
-"屯門海旁重新建立起一個生存社區。"
+() => {
+
+showEndingText(
+"屯門海旁重新建立起一個小型生存社區。"
 );
+
 },
-5000
+4500
 );
 
 setTimeout(
-()=>{
-showEnding(
-"Amy 同 Daniel 結婚，<br>" +
-"並建立咗屬於自己嘅家庭。"
+() => {
+
+showEndingText(
+"Amy 同 Daniel 成為社區嘅核心。"
 );
+
 },
-10000
+9000
 );
 
 setTimeout(
-()=>{
-showEnding(
-"世界曾經終結。<br>" +
-"<strong>但人類重新開始。</strong>"
+() => {
+
+showEndingText(
+"佢哋結婚，建立咗屬於自己嘅家庭。"
 );
+
 },
-16000
+13500
+);
+
+setTimeout(
+() => {
+
+showEndingText(
+"<strong>THE WORLD ENDED.</strong><br>" +
+"<strong>WE BEGAN AGAIN.</strong>"
+);
+
+speak(
+"世界曾經終結，但我哋重新開始。"
+);
+
+},
+19000
 );
 }
+
+// ============================================================
+// SETTLEMENT
+// ============================================================
 
 function createSettlement() {
 
 const group =
 new THREE.Group();
 
-scene.add(group);
+scene.add(
+group
+);
 
 const wood =
-mat(0x625140,.92);
+makeMaterial(
+0x625140,
+.94
+);
 
 const canvas =
-mat(0xa69d88,.98);
+makeMaterial(
+0xa59c87,
+.98
+);
 
-for(
-let i=0;
-i<5;
+const metal =
+makeMaterial(
+0x464c4b,
+.68,
+.4
+);
+
+// Shelters
+
+for (
+let i = 0;
+i < 5;
 i++
 ) {
 
 const x =
--10+i*5;
+-10 +
+i * 5;
 
-box(
-x,-1.5,-146,
-4,.35,4,
+makeBox(
+x,
+-1.5,
+-146,
+4,
+.35,
+4,
 wood,
 group
 );
 
-box(
-x,.7,-146,
-4,.12,4,
+makeBox(
+x,
+.7,
+-146,
+4,
+.12,
+4,
 canvas,
 group
 );
 }
 
-const fire =
+// Fence
+
+for (
+let x = -18;
+x <= 18;
+x += 2.5
+) {
+
+makeCylinder(
+x,
+-.2,
+-138,
+.06,
+.08,
+1.7,
+metal,
+group
+);
+}
+
+makeBox(
+0,
+.7,
+-138,
+36,
+.08,
+.08,
+metal,
+group
+);
+
+// Water tanks
+
+for (
+let i = 0;
+i < 2;
+i++
+) {
+
+makeCylinder(
+10 + i * 2,
+0,
+-143,
+.8,
+.9,
+2.2,
+metal,
+group
+);
+}
+
+// Solar panels
+
+const solar =
+makeMaterial(
+0x263943,
+.28,
+.35
+);
+
+for (
+let i = 0;
+i < 4;
+i++
+) {
+
+const panel =
+makeBox(
+-10 + i * 3,
+2.1,
+-143,
+2.2,
+.08,
+1.3,
+solar,
+group
+);
+
+panel.rotation.x =
+-.25;
+}
+
+// Fire
+
+const fireLight =
 new THREE.PointLight(
-0xff9c45,
+0xff9b45,
 2.8,
 14
 );
 
-fire.position.set(
-0,.5,-153
+fireLight.position.set(
+0,
+.5,
+-153
 );
 
-group.add(fire);
+group.add(
+fireLight
+);
 
-sphere(
-0,-1.1,-153,
+makeSphere(
+0,
+-1.1,
+-153,
 .35,
 new THREE.MeshBasicMaterial({
-color:0xff8a38
+color: 0xff8a38
 }),
 group
 );
 
+// People
+
 const people = [
-[-13,-151],
+[-14,-151],
 [-8,-158],
 [8,-158],
-[13,-151]
+[14,-151],
+[5,-141]
 ];
 
 people.forEach(
@@ -1743,61 +3490,90 @@ p => {
 
 const person =
 createCharacter(
-Math.random()>.5
+Math.random() > .5
 ? 0x4a5552
-: 0x55504a
+: 0x55504a,
+.9
 );
 
 person.position.set(
-p[0],-2,p[1]
+p[0],
+-2,
+p[1]
 );
 
-group.add(person);
+person.rotation.y =
+Math.random() *
+Math.PI * 2;
+
+group.add(
+person
+);
 }
 );
 
-const amyFinal =
+// Amy
+
+const amy =
 createCharacter(
 0x4c5957
 );
 
-amyFinal.position.set(
--1.2,-2,-148
+amy.position.set(
+-1.2,
+-2,
+-148
 );
+
+amy.rotation.y =
+.25;
 
 group.add(
-amyFinal
+amy
 );
 
-const danielFinal =
+// Daniel
+
+const finalDaniel =
 createCharacter(
 0x39474a
 );
 
-danielFinal.position.set(
-1.2,-2,-148
+finalDaniel.position.set(
+1.2,
+-2,
+-148
 );
 
+finalDaniel.rotation.y =
+-.25;
+
 group.add(
-danielFinal
+finalDaniel
 );
+
+// Child
 
 const child =
 createCharacter(
-0x68635b
-);
-
-child.scale.setScalar(
+0x68635b,
 .55
 );
 
 child.position.set(
-0,-2,-146.8
+0,
+-2,
+-146.8
 );
+
+child.rotation.y =
+Math.PI;
 
 group.add(
 child
 );
+
+// Final camera
 
 camera.position.set(
 17,
@@ -1807,19 +3583,25 @@ camera.position.set(
 
 camera.lookAt(
 0,
-0,
+.5,
 -150
 );
 }
 
-function showEnding(text) {
+// ============================================================
+// ENDING TEXT
+// ============================================================
+
+function showEndingText(
+text
+) {
 
 let overlay =
 document.getElementById(
 "endingOverlay"
 );
 
-if(!overlay) {
+if (!overlay) {
 
 overlay =
 document.createElement(
@@ -1854,7 +3636,7 @@ overlay.style.boxSizing =
 "border-box";
 
 overlay.style.background =
-"rgba(0,0,0,.42)";
+"rgba(0,0,0,.34)";
 
 overlay.style.color =
 "#fff";
@@ -1874,6 +3656,9 @@ overlay.style.textShadow =
 overlay.style.zIndex =
 "8000";
 
+overlay.style.pointerEvents =
+"none";
+
 document.body.appendChild(
 overlay
 );
@@ -1883,11 +3668,135 @@ overlay.innerHTML =
 `<div>${text}</div>`;
 }
 
+// ============================================================
+// ENDING CAMERA
+// ============================================================
+
+function updateEndingCamera(
+time
+) {
+
+if (!ending)
+return;
+
+const elapsed =
+time -
+endingStart;
+
+if (
+elapsed < 8000
+) {
+
+const p =
+THREE.MathUtils.clamp(
+elapsed / 8000,
+0,
+1
+);
+
+camera.position.lerp(
+new THREE.Vector3(
+18 -
+p * 5,
+7 -
+p * 2,
+-134 -
+p * 7
+),
+.015
+);
+
+camera.lookAt(
+0,
+.4,
+-148
+);
+}
+
+else if (
+elapsed < 17000
+) {
+
+const p =
+THREE.MathUtils.clamp(
+(elapsed - 8000) /
+9000,
+0,
+1
+);
+
+camera.position.lerp(
+new THREE.Vector3(
+13 -
+p * 25,
+5 +
+p * .5,
+-141 -
+p * 28
+),
+.012
+);
+
+camera.lookAt(
+0,
+0,
+-165
+);
+}
+
+else {
+
+camera.lookAt(
+0,
+0,
+-165
+);
+}
+}
+
+// ============================================================
+// RESIZE
+// ============================================================
+
+function setupResize() {
+
+window.addEventListener(
+"resize",
+() => {
+
+if (
+!camera ||
+!renderer
+) {
+return;
+}
+
+camera.aspect =
+window.innerWidth /
+window.innerHeight;
+
+camera.updateProjectionMatrix();
+
+renderer.setSize(
+window.innerWidth,
+window.innerHeight
+);
+}
+);
+}
+
+// ============================================================
+// ANIMATION
+// ============================================================
+
 function animate() {
 
 requestAnimationFrame(
 animate
 );
+
+if (!clock)
+return;
 
 const delta =
 Math.min(
@@ -1896,18 +3805,51 @@ clock.getDelta(),
 );
 
 const time =
-performance.now()*.001;
+performance.now() * .001;
 
-updateWater(time);
+updateWater(
+time
+);
 
-if(gameStarted) {
+updateDust(
+time
+);
 
-updatePlayer(delta);
-checkStory();
+if (
+gameStarted &&
+!cinematic &&
+!ending
+) {
+
+updatePlayer(
+delta
+);
+
+updateStory();
 }
 
-if(cinematic) {
+if (cinematic) {
+
 updateReunion(
+performance.now()
+);
+
+if (daniel) {
+
+const breathe =
+1 +
+Math.sin(
+time * 1.7
+) * .008;
+
+daniel.scale.y =
+breathe;
+}
+}
+
+if (ending) {
+
+updateEndingCamera(
 performance.now()
 );
 }
@@ -1918,87 +3860,15 @@ camera
 );
 }
 
+// ============================================================
+// INITIALIZATION
+// ============================================================
+
 function init() {
 
-scene =
-new THREE.Scene();
+try {
 
-scene.background =
-new THREE.Color(
-0x68737a
-);
-
-scene.fog =
-new THREE.FogExp2(
-0x68737a,
-.009
-);
-
-camera =
-new THREE.PerspectiveCamera(
-68,
-innerWidth/innerHeight,
-.05,
-500
-);
-
-camera.position.set(
-0,
-PLAYER_HEIGHT,
-28
-);
-
-renderer =
-new THREE.WebGLRenderer({
-antialias:true,
-powerPreference:
-"high-performance"
-});
-
-renderer.setPixelRatio(
-Math.min(
-devicePixelRatio,
-1.7
-)
-);
-
-renderer.setSize(
-innerWidth,
-innerHeight
-);
-
-renderer.outputColorSpace =
-THREE.SRGBColorSpace;
-
-renderer.toneMapping =
-THREE.ACESFilmicToneMapping;
-
-renderer.toneMappingExposure =
-1.05;
-
-renderer.shadowMap.enabled =
-true;
-
-renderer.shadowMap.type =
-THREE.PCFSoftShadowMap;
-
-document.body.appendChild(
-renderer.domElement
-);
-
-clock =
-new THREE.Clock();
-
-player = {
-position:
-new THREE.Vector3(
-0,
-PLAYER_HEIGHT,
-28
-),
-flashlight:null,
-flashTarget:null
-};
+createScene();
 
 createLighting();
 createGround();
@@ -2006,33 +3876,26 @@ createRoad();
 createBuildings();
 createLRT();
 createStation();
-createCars();
-createTrees();
+createVehicles();
+createVegetation();
 createDebris();
-createPier();
-createWater();
 createStreetLights();
-createDaniel();
+createPier();
+createPierLights();
+createWater();
+createBoat();
+createDust();
+createPlayer();
 createFlashlight();
+createDaniel();
+
 setupInput();
+setupResize();
 
-window.addEventListener(
-"resize",
-()=>{
-camera.aspect =
-innerWidth/
-innerHeight;
+if (startScreen) {
 
-camera.updateProjectionMatrix();
-
-renderer.setSize(
-innerWidth,
-innerHeight
-);
-}
-);
-
-if(startScreen) {
+startScreen.style.display =
+"flex";
 
 startScreen.style.zIndex =
 "9999";
@@ -2041,7 +3904,7 @@ startScreen.style.pointerEvents =
 "auto";
 }
 
-if(startButton) {
+if (startButton) {
 
 startButton.style.zIndex =
 "10000";
@@ -2051,12 +3914,77 @@ startButton.style.pointerEvents =
 
 startButton.disabled =
 false;
+
+startButton.style.cursor =
+"pointer";
 }
 
 animate();
+
+console.log(
+"AMY V8.1 READY"
+);
+
+} catch (error) {
+
+console.error(
+"AMY V8.1 INITIALIZATION ERROR:",
+error
+);
+
+const errorBox =
+document.createElement(
+"div"
+);
+
+errorBox.style.position =
+"fixed";
+
+errorBox.style.inset =
+"0";
+
+errorBox.style.display =
+"flex";
+
+errorBox.style.alignItems =
+"center";
+
+errorBox.style.justifyContent =
+"center";
+
+errorBox.style.background =
+"#111";
+
+errorBox.style.color =
+"#fff";
+
+errorBox.style.fontFamily =
+"Arial,sans-serif";
+
+errorBox.style.textAlign =
+"center";
+
+errorBox.style.padding =
+"30px";
+
+errorBox.style.zIndex =
+"99999";
+
+errorBox.innerHTML =
+"遊戲初始化失敗。<br>" +
+"請重新整理頁面。";
+
+document.body.appendChild(
+errorBox
+);
+}
 }
 
-if(
+// ============================================================
+// DOM READY
+// ============================================================
+
+if (
 document.readyState ===
 "loading"
 ) {
@@ -2064,10 +3992,43 @@ document.readyState ===
 document.addEventListener(
 "DOMContentLoaded",
 init,
-{once:true}
+{
+once: true
+}
 );
 
 } else {
 
 init();
 }
+
+// ============================================================
+// SAFETY
+// ============================================================
+
+window.addEventListener(
+"error",
+event => {
+
+console.error(
+"AMY runtime error:",
+event.error ||
+event.message
+);
+}
+);
+
+window.addEventListener(
+"unhandledrejection",
+event => {
+
+console.error(
+"AMY promise error:",
+event.reason
+);
+}
+);
+
+// ============================================================
+// END
+// ============================================================
