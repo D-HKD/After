@@ -1,1436 +1,448 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
-/* =========================================================
-AMY - FIVE YEARS AFTER
-V7.1
-Post-apocalyptic Tuen Mun Ferry Pier
-
-V7.1 FIX:
-- 強制修正開始遊戲按鈕
-- pointerdown + click
-- capture phase
-- 強制 z-index / pointer-events
-- Audio 失敗不會阻止遊戲開始
-- DOM 載入次序更安全
-- 保留 V7 原有遊戲內容
-========================================================= */
-
-const VERSION = "V7.1";
-
-let scene;
-let camera;
-let renderer;
-let clock;
-
-let player;
-let flashlight;
-let flashlightTarget;
-let daniel;
-
-let audio = {
-ctx: null,
-master: null,
-ocean: null,
-wind: null,
-radio: null,
-stepTimer: 0,
-enabled: false
-};
-
+let scene, camera, renderer, clock;
 let gameStarted = false;
-let endingStarted = false;
-let endingStage = 0;
+let cinematic = false;
+let ending = false;
+let player;
+let daniel;
+let water;
+let yaw = 0;
+let pitch = 0;
+let keys = {};
+let storyStep = 0;
+let reunionTime = 0;
 
-let currentStory = -1;
-let lastStepTime = 0;
+const startScreen = document.getElementById("startScreen");
+const startButton = document.getElementById("startButton");
 
-const keys = {};
+const PLAYER_HEIGHT = 1.7;
+const WALK_SPEED = 4.2;
+const RUN_SPEED = 6.2;
 
-const touch = {
-active: false,
-x: 0,
-y: 0,
-lookX: 0,
-lookY: 0
+const C = {
+ground: 0x555956,
+road: 0x282d2e,
+concrete: 0x777a76,
+building: 0x696d6a,
+glass: 0x30434a,
+metal: 0x454b4b,
+rail: 0x777b79,
+water: 0x315762,
+tree: 0x39483d,
+trunk: 0x4d4137,
+skin: 0xb98569,
+shirt: 0x3e4a4b,
+pants: 0x252a2b
 };
 
-const state = {
-yaw: 0,
-pitch: 0,
-speed: 3.8,
-sprint: false,
-flashlight: true,
-messageTimer: null,
-radioPlayed: false,
-danielPlayed: false,
-endingTimer: 0
-};
-
-const materials = {};
-
-const waterData = {
-mesh: null,
-base: []
-};
-
-const lights = {
-street: [],
-station: [],
-buildings: []
-};
-
-
-/* =========================================================
-DOM
-========================================================= */
-
-function getOrCreate(id, tag = "div") {
-
-let el = document.getElementById(id);
-
-if (!el) {
-
-el = document.createElement(tag);
-el.id = id;
-
-document.body.appendChild(el);
-}
-
-return el;
-}
-
-const gameUI = getOrCreate("game");
-const objectiveUI = getOrCreate("objective");
-const messageUI = getOrCreate("message");
-
-let startScreen = null;
-let startButton = null;
-
-
-/* =========================================================
-START ELEMENTS
-========================================================= */
-
-function refreshStartElements() {
-
-startScreen =
-document.getElementById("startScreen");
-
-startButton =
-document.getElementById("startButton");
-
-if (startScreen) {
-
-Object.assign(
-startScreen.style,
-{
-position: "fixed",
-inset: "0",
-zIndex: "99999",
-pointerEvents: "auto"
-}
-);
-}
-
-if (startButton) {
-
-Object.assign(
-startButton.style,
-{
-position: "relative",
-zIndex: "100000",
-pointerEvents: "auto",
-touchAction: "manipulation",
-cursor: "pointer"
-}
-);
-
-startButton.disabled = false;
-}
-}
-
-
-/* =========================================================
-BASIC UI
-========================================================= */
-
-function setupUI() {
-
-Object.assign(
-gameUI.style,
-{
-position: "fixed",
-inset: "0",
-pointerEvents: "none",
-zIndex: "5"
-}
-);
-
-Object.assign(
-objectiveUI.style,
-{
-position: "fixed",
-left: "20px",
-top: "20px",
-color: "#ffffff",
-fontFamily: "Arial, sans-serif",
-fontSize: "16px",
-lineHeight: "1.5",
-padding: "10px 14px",
-background: "rgba(0,0,0,.48)",
-borderRadius: "8px",
-textShadow: "0 1px 4px #000",
-maxWidth: "330px",
-pointerEvents: "none",
-zIndex: "10",
-boxSizing: "border-box"
-}
-);
-
-Object.assign(
-messageUI.style,
-{
-position: "fixed",
-left: "50%",
-bottom: "13%",
-transform: "translateX(-50%)",
-color: "#ffffff",
-fontFamily: "Arial, sans-serif",
-fontSize: "20px",
-lineHeight: "1.5",
-textAlign: "center",
-padding: "12px 22px",
-background: "rgba(0,0,0,.62)",
-borderRadius: "10px",
-textShadow: "0 2px 5px #000",
-maxWidth: "80%",
-opacity: "0",
-transition: "opacity .4s",
-pointerEvents: "none",
-zIndex: "20",
-boxSizing: "border-box"
-}
-);
-
-objectiveUI.innerHTML =
-"<b>OBJECTIVE</b><br>尋找 Daniel";
-
-refreshStartElements();
-}
-
-
-/* =========================================================
-MATERIALS
-========================================================= */
-
-function createMaterials() {
-
-materials.ground =
-new THREE.MeshStandardMaterial({
-color: 0x242628,
-roughness: 0.92,
-metalness: 0.02
-});
-
-materials.road =
-new THREE.MeshStandardMaterial({
-color: 0x17191b,
-roughness: 0.95
-});
-
-materials.concrete =
-new THREE.MeshStandardMaterial({
-color: 0x696b68,
-roughness: 0.9
-});
-
-materials.concreteDark =
-new THREE.MeshStandardMaterial({
-color: 0x414342,
-roughness: 0.94
-});
-
-materials.wall =
-new THREE.MeshStandardMaterial({
-color: 0x77756e,
-roughness: 0.9
-});
-
-materials.wallDark =
-new THREE.MeshStandardMaterial({
-color: 0x464744,
-roughness: 0.92
-});
-
-materials.window =
-new THREE.MeshStandardMaterial({
-color: 0x182326,
-roughness: 0.45,
-metalness: 0.1
-});
-
-materials.windowLit =
-new THREE.MeshStandardMaterial({
-color: 0xb59d62,
-emissive: 0x6e5425,
-emissiveIntensity: 0.55,
-roughness: 0.6
-});
-
-materials.metal =
-new THREE.MeshStandardMaterial({
-color: 0x505554,
-roughness: 0.55,
-metalness: 0.75
-});
-
-materials.rust =
-new THREE.MeshStandardMaterial({
-color: 0x513d31,
-roughness: 0.92,
-metalness: 0.25
-});
-
-materials.green =
-new THREE.MeshStandardMaterial({
-color: 0x3d6255,
-roughness: 0.8
-});
-
-materials.orange =
-new THREE.MeshStandardMaterial({
-color: 0xa16a36,
-roughness: 0.82
-});
-
-materials.yellow =
-new THREE.MeshStandardMaterial({
-color: 0xc1a34d,
-roughness: 0.8
-});
-
-materials.white =
-new THREE.MeshStandardMaterial({
-color: 0xd0d0c9,
-roughness: 0.7
-});
-
-materials.lrtBlue =
-new THREE.MeshStandardMaterial({
-color: 0x354f5b,
-roughness: 0.6,
-metalness: 0.25
-});
-
-materials.lrtYellow =
-new THREE.MeshStandardMaterial({
-color: 0xc7a94d,
-roughness: 0.62,
-metalness: 0.2
-});
-
-materials.water =
-new THREE.MeshStandardMaterial({
-color: 0x263e42,
-roughness: 0.35,
-metalness: 0.15,
-transparent: true,
-opacity: 0.82
-});
-
-materials.tree =
-new THREE.MeshStandardMaterial({
-color: 0x26372d,
-roughness: 0.98
-});
-
-materials.leaf =
-new THREE.MeshStandardMaterial({
-color: 0x304b39,
-roughness: 1
-});
-
-materials.neonGreen =
-new THREE.MeshStandardMaterial({
-color: 0x648f61,
-emissive: 0x243c22,
-emissiveIntensity: 0.35
+function mat(color, rough = .8, metal = 0) {
+return new THREE.MeshStandardMaterial({
+color,
+roughness: rough,
+metalness: metal
 });
 }
-
-
-/* =========================================================
-HELPERS
-========================================================= */
 
 function box(
-x,
-y,
-z,
-width,
-height,
-depth,
+x,y,z,
+w,h,d,
 material,
 parent = scene
 ) {
-
-const geometry =
-new THREE.BoxGeometry(
-width,
-height,
-depth
-);
-
-const mesh =
-new THREE.Mesh(
-geometry,
+const mesh = new THREE.Mesh(
+new THREE.BoxGeometry(w,h,d),
 material
 );
 
-mesh.position.set(
-x,
-y,
-z
-);
-
+mesh.position.set(x,y,z);
 mesh.castShadow = true;
 mesh.receiveShadow = true;
-
 parent.add(mesh);
 
 return mesh;
 }
-
 
 function cylinder(
-x,
-y,
-z,
-radius,
-height,
+x,y,z,
+rt,rb,h,
 material,
-segments = 12,
 parent = scene
 ) {
-
-const geometry =
+const mesh = new THREE.Mesh(
 new THREE.CylinderGeometry(
-radius,
-radius,
-height,
-segments
-);
-
-const mesh =
-new THREE.Mesh(
-geometry,
+rt,rb,h,16
+),
 material
 );
 
-mesh.position.set(
-x,
-y,
-z
-);
-
+mesh.position.set(x,y,z);
 mesh.castShadow = true;
 mesh.receiveShadow = true;
-
 parent.add(mesh);
 
 return mesh;
 }
-
 
 function sphere(
-x,
-y,
-z,
-radius,
+x,y,z,
+r,
 material,
 parent = scene
 ) {
-
-const geometry =
+const mesh = new THREE.Mesh(
 new THREE.SphereGeometry(
-radius,
-12,
-8
-);
-
-const mesh =
-new THREE.Mesh(
-geometry,
+r,20,14
+),
 material
 );
 
-mesh.position.set(
-x,
-y,
-z
-);
-
+mesh.position.set(x,y,z);
 mesh.castShadow = true;
 mesh.receiveShadow = true;
-
 parent.add(mesh);
 
 return mesh;
 }
 
+function createLighting() {
 
-/* =========================================================
-ENVIRONMENT
-========================================================= */
+const hemi =
+new THREE.HemisphereLight(
+0xb9c7cc,
+0x25282a,
+1.15
+);
+
+scene.add(hemi);
+
+const sun =
+new THREE.DirectionalLight(
+0xd8e1e4,
+1.65
+);
+
+sun.position.set(
+-45,75,30
+);
+
+sun.castShadow = true;
+
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
+
+sun.shadow.camera.left = -100;
+sun.shadow.camera.right = 100;
+sun.shadow.camera.top = 100;
+sun.shadow.camera.bottom = -100;
+
+scene.add(sun);
+
+const fill =
+new THREE.DirectionalLight(
+0x8298ad,
+.32
+);
+
+fill.position.set(
+50,35,-100
+);
+
+scene.add(fill);
+}
 
 function createGround() {
 
-box(
-0,
--0.55,
--60,
-100,
-1,
-150,
-materials.ground
+const ground = new THREE.Mesh(
+new THREE.PlaneGeometry(
+150,250,50,80
+),
+mat(C.ground,.95)
 );
 
-box(
-0,
--0.42,
--47,
-34,
-0.25,
-80,
-materials.road
+ground.rotation.x =
+-Math.PI / 2;
+
+ground.position.set(
+0,-2,-55
 );
 
-for (
-let z = -8;
-z > -110;
-z -= 12
+ground.receiveShadow = true;
+
+scene.add(ground);
+}
+
+function createRoad() {
+
+box(
+0,-1.94,-45,
+18,.12,190,
+mat(C.road,.98)
+);
+
+const line = mat(
+0xc8c5aa,.8
+);
+
+for(
+let z=45;
+z>-135;
+z-=8
 ) {
-
 box(
-0,
--0.27,
-z,
-0.18,
-0.03,
-5.5,
-materials.yellow
+0,-1.86,z,
+.14,.025,3.8,
+line
 );
 }
-
-box(
--17,
--0.1,
--60,
-8,
-0.3,
-110,
-materials.concrete
-);
-
-box(
-17,
--0.1,
--60,
-8,
-0.3,
-110,
-materials.concrete
-);
 }
-
-
-/* =========================================================
-BUILDINGS
-========================================================= */
 
 function createBuilding(
-x,
-z,
-width,
-height,
-depth,
-dark = false
+x,z,w,h,d,color
 ) {
 
-const building =
+const group =
 new THREE.Group();
 
-building.position.set(
-x,
-0,
-z
+group.position.set(
+x,-2,z
 );
 
-scene.add(building);
-
-const wallMaterial =
-dark
-? materials.wallDark
-: materials.wall;
+scene.add(group);
 
 box(
-0,
-height / 2,
-0,
-width,
-height,
-depth,
-wallMaterial,
-building
+0,h/2,0,
+w,h,d,
+mat(color,.88),
+group
 );
 
 box(
-0,
-height + 0.15,
-0,
-width + 0.25,
-0.3,
-depth + 0.25,
-materials.concreteDark,
-building
+0,h+.18,0,
+w+.3,.3,d+.3,
+mat(0x424647,.9,.15),
+group
 );
 
-const floors =
+const glass =
+new THREE.MeshPhysicalMaterial({
+color:C.glass,
+roughness:.18,
+metalness:.08,
+transmission:.03
+});
+
+const rows =
+Math.max(
+1,
+Math.floor(h/3)
+);
+
+const cols =
 Math.max(
 2,
-Math.floor(height / 3.2)
+Math.floor(w/3)
 );
 
-const columns =
-Math.max(
-2,
-Math.floor(width / 2.4)
-);
-
-for (
-let floor = 0;
-floor < floors;
-floor++
+for(
+let r=0;
+r<rows;
+r++
 ) {
 
-const y =
-1.5 + floor * 3.1;
-
-for (
-let c = 0;
-c < columns;
+for(
+let c=0;
+c<cols;
 c++
 ) {
 
-const px =
--width / 2 +
-1.2 +
-c *
-(
-(width - 2.4) /
-Math.max(
-1,
-columns - 1
-)
-);
+const wx =
+-w/2+1.3+
+c*((w-2.6)/
+Math.max(1,cols-1));
 
-const lit =
-(
-c +
-floor +
-Math.round(z)
-) % 7 === 0;
+const wy =
+2+r*2.8;
 
-const windowMaterial =
-lit
-? materials.windowLit
-: materials.window;
+if(
+wy>h-1
+) continue;
 
 box(
-px,
-y,
-depth / 2 + 0.04,
-0.85,
-1.45,
-0.08,
-windowMaterial,
-building
-);
-
-box(
-px,
-y,
--depth / 2 - 0.04,
-0.85,
-1.45,
-0.08,
-windowMaterial,
-building
+wx,wy,d/2+.02,
+.9,1.25,.04,
+glass,
+group
 );
 }
 }
+}
 
-for (
-let floor = 0;
-floor < Math.min(floors, 6);
-floor++
+function createBuildings() {
+
+createBuilding(
+-29,-25,
+30,18,23,
+0x777b78
+);
+
+createBuilding(
+30,-18,
+28,22,24,
+0x686d6a
+);
+
+createBuilding(
+-30,-77,
+25,15,20,
+0x746f67
+);
+
+createBuilding(
+31,-94,
+30,20,27,
+0x656967
+);
+
+createBuilding(
+-30,-130,
+33,19,26,
+0x6d716d
+);
+}
+
+function createLRT() {
+
+const rail =
+mat(C.rail,.38,.8);
+
+const sleeper =
+mat(0x454947,.92);
+
+for(
+const x of [-3.2,3.2]
 ) {
-
-const y =
-1.0 + floor * 3.1;
-
 box(
-width / 2 - 0.55,
-y,
-depth / 2 + 0.28,
-0.65,
-0.45,
-0.35,
-materials.metal,
-building
-);
-
-box(
--width / 2 + 0.55,
-y + 0.2,
-depth / 2 + 0.28,
-0.65,
-0.45,
-0.35,
-materials.metal,
-building
+x,-1.73,-35,
+.15,.18,205,
+rail
 );
 }
+
+for(
+let z=60;
+z>-135;
+z-=2.1
+) {
+box(
+0,-1.82,z,
+8,.16,.35,
+sleeper
+);
+}
+
+const pole =
+mat(0x515858,.58,.4);
+
+for(
+let z=50;
+z>-130;
+z-=18
+) {
 
 cylinder(
--width / 2 + 0.25,
-height / 2,
-depth / 2 + 0.18,
-0.07,
-height - 1,
-materials.rust,
-8,
-building
-);
-
-return building;
-}
-
-
-function createCity() {
-
-createBuilding(
--26,
--15,
-15,
-18,
-18,
-false
-);
-
-createBuilding(
-26,
--18,
-16,
-23,
-20,
-true
-);
-
-createBuilding(
--27,
--43,
-18,
-25,
-20,
-true
-);
-
-createBuilding(
-27,
--46,
-18,
-20,
-22,
-false
-);
-
-createBuilding(
--28,
--72,
-19,
-29,
-21,
-false
-);
-
-createBuilding(
-28,
--70,
-17,
-22,
-20,
-true
-);
-
-createBuilding(
--28,
--100,
-17,
-17,
-20,
-true
-);
-
-createBuilding(
-27,
--98,
-20,
-27,
-22,
-false
-);
-
-createBuilding(
--30,
--120,
-20,
-15,
-20,
-false
-);
-
-createBuilding(
-29,
--118,
-18,
-18,
-20,
-true
-);
-}
-
-
-/* =========================================================
-LRT
-========================================================= */
-
-function createTrack(
-x,
-zStart,
-zEnd
-) {
-
-const length =
-Math.abs(
-zEnd - zStart
-);
-
-const z =
-(zStart + zEnd) / 2;
-
-box(
-x - 0.72,
--0.05,
-z,
-0.13,
-0.1,
-length,
-materials.metal
+-6.5,3,z,
+.09,.13,10,
+pole
 );
 
 box(
-x + 0.72,
--0.05,
-z,
-0.13,
-0.1,
-length,
-materials.metal
-);
-
-for (
-let p = zStart;
-p <= zEnd;
-p += 2.5
-) {
-
-box(
-x,
--0.16,
-p,
-2.1,
-0.18,
-0.22,
-materials.concreteDark
+-2.8,7.8,z,
+7.3,.1,.1,
+pole
 );
 }
 }
-
-
-function createLRTTracks() {
-
-const xs = [
--7.4,
--4.7,
--2.0,
-2.0,
-4.7,
-7.4
-];
-
-xs.forEach(
-x => {
-createTrack(
-x,
--8,
--112
-);
-}
-);
-
-box(
-0,
-0.05,
--60,
-0.3,
-0.25,
-105,
-materials.green
-);
-}
-
-
-/* =========================================================
-LRT STATION
-========================================================= */
 
 function createStation() {
 
-for (
-const x of [
--9.8,
--1.35,
-1.35,
-9.8
-]
-) {
-
-box(
-x,
-0.25,
--63,
-1.75,
-0.5,
-78,
-materials.concrete
-);
-
-box(
-x,
-0.56,
--63,
-0.13,
-0.62,
-78,
-materials.green
-);
-
-box(
-x +
-(
-x > 0
-? -0.12
-: 0.12
-),
-0.59,
--63,
-0.06,
-0.65,
-78,
-materials.orange
-);
-}
-
-box(
-0,
-5.1,
--63,
-22,
-0.35,
-72,
-materials.concreteDark
-);
-
-box(
-0,
-4.88,
--63,
-21,
-0.12,
-70,
-materials.metal
-);
-
-for (
-let z = -28;
-z >= -98;
-z -= 8
-) {
-
-for (
-const x of [-10, 10]
-) {
-
-box(
-x,
-2.5,
-z,
-0.38,
-5,
-0.38,
-materials.concreteDark
-);
-}
-}
-
-for (
-let z = -28;
-z >= -98;
-z -= 16
-) {
-
-box(
-0,
-4.15,
-z,
-20.5,
-0.28,
-0.3,
-materials.metal
-);
-}
-
-createStationSigns();
-createStationLights();
-}
-
-
-/* =========================================================
-STATION SIGNS
-========================================================= */
-
-function createTextTexture(
-text,
-subtext = ""
-) {
-
-const canvas =
-document.createElement(
-"canvas"
-);
-
-canvas.width = 1024;
-canvas.height = 256;
-
-const ctx =
-canvas.getContext("2d");
-
-ctx.fillStyle = "#1f2524";
-
-ctx.fillRect(
-0,
-0,
-canvas.width,
-canvas.height
-);
-
-ctx.strokeStyle = "#87978c";
-ctx.lineWidth = 8;
-
-ctx.strokeRect(
-8,
-8,
-canvas.width - 16,
-canvas.height - 16
-);
-
-ctx.fillStyle = "#eeeeea";
-
-ctx.font =
-"bold 58px Arial";
-
-ctx.textAlign =
-"center";
-
-ctx.fillText(
-text,
-512,
-105
-);
-
-ctx.font =
-"bold 34px Arial";
-
-ctx.fillText(
-subtext,
-512,
-164
-);
-
-const texture =
-new THREE.CanvasTexture(
-canvas
-);
-
-return texture;
-}
-
-
-function createStationSigns() {
-
-const texture =
-createTextTexture(
-"屯門碼頭",
-"TUEN MUN FERRY PIER"
-);
-
-const material =
-new THREE.MeshBasicMaterial({
-map: texture
-});
-
-for (
-const z of [
--37,
--62,
--87
-]
-) {
-
-const sign =
-box(
-0,
-3.4,
-z,
-7,
-1.75,
-0.12,
-material
-);
-
-sign.rotation.y = 0;
-}
-}
-
-
-/* =========================================================
-STATION LIGHTS
-========================================================= */
-
-function createStationLights() {
-
-for (
-let z = -30;
-z >= -96;
-z -= 8
-) {
-
-const light =
-new THREE.PointLight(
-0xffe5b1,
-0.7,
-9,
-2
-);
-
-light.position.set(
-0,
-4.6,
-z
-);
-
-scene.add(light);
-
-lights.station.push(
-light
-);
-
-box(
-0,
-4.45,
-z,
-0.8,
-0.08,
-0.15,
-materials.windowLit
-);
-}
-}
-
-
-/* =========================================================
-LRT TRAIN
-========================================================= */
-
-function createLRTTrain(
-x,
-z,
-direction = 1
-) {
-
-const train =
+const station =
 new THREE.Group();
 
-train.position.set(
-x,
-1.0,
-z
+station.position.set(
+0,-2,-63
 );
 
-train.rotation.y =
-direction > 0
-? 0
-: Math.PI;
-
-scene.add(train);
+scene.add(station);
 
 box(
-0,
-0.8,
-0,
-2.15,
-1.7,
-11,
-materials.lrtBlue,
-train
+0,.12,0,
+15,.3,10,
+mat(C.concrete,.9),
+station
 );
 
 box(
-0,
-1.28,
-0,
-2.18,
-0.45,
-10.6,
-materials.lrtYellow,
-train
+0,5,0,
+16,.3,11,
+mat(0x555b5b,.65,.2),
+station
 );
 
-for (
-let zz = -4.2;
-zz <= 4.2;
-zz += 2.1
+const pillar =
+mat(0x5e6361,.75);
+
+for(
+const x of [-6.5,6.5]
 ) {
-
-box(
--1.09,
-1.15,
-zz,
-0.05,
-0.72,
-1.45,
-materials.window,
-train
-);
-
-box(
-1.09,
-1.15,
-zz,
-0.05,
-0.72,
-1.45,
-materials.window,
-train
-);
-}
-
-box(
-0,
-1.18,
-5.52,
-1.75,
-0.9,
-0.08,
-materials.window,
-train
-);
-
-box(
-0,
-1.18,
--5.52,
-1.75,
-0.9,
-0.08,
-materials.window,
-train
-);
-
-const lampMaterial =
-new THREE.MeshStandardMaterial({
-color: 0xffffff,
-emissive: 0xffffff,
-emissiveIntensity: 2
-});
-
-box(
--0.58,
-0.7,
-5.57,
-0.25,
-0.25,
-0.08,
-lampMaterial,
-train
-);
-
-box(
-0.58,
-0.7,
-5.57,
-0.25,
-0.25,
-0.08,
-lampMaterial,
-train
-);
-
-return train;
-}
-
-
-/* =========================================================
-BUS TERMINAL
-========================================================= */
-
-function createBusTerminal() {
-
-box(
-13,
-4.5,
--38,
-9,
-0.35,
-22,
-materials.concreteDark
-);
-
-for (
-const z of [
--47,
--39,
--31
-]
+for(
+const z of [-4.2,4.2]
 ) {
-
-box(
-9,
-2.1,
-z,
-0.35,
-4.2,
-0.35,
-materials.metal
-);
-
-box(
-17,
-2.1,
-z,
-0.35,
-4.2,
-0.35,
-materials.metal
-);
-}
-
-const bus =
-new THREE.Group();
-
-bus.position.set(
-14,
-1.15,
--47
-);
-
-scene.add(bus);
-
-box(
-0,
-0,
-0,
-3.2,
-2.3,
-10,
-materials.lrtBlue,
-bus
-);
-
-box(
-0,
-0.75,
-0,
-3.25,
-0.7,
-9.5,
-materials.window,
-bus
-);
-
-for (
-const z of [
--3.5,
--1.2,
-1.2,
-3.5
-]
-) {
-
 cylinder(
--1.25,
--1.1,
-z,
-0.45,
-0.22,
-materials.metal,
-16,
-bus
-);
-
-cylinder(
-1.25,
--1.1,
-z,
-0.45,
-0.22,
-materials.metal,
-16,
-bus
+x,2.5,z,
+.22,.27,5,
+pillar,
+station
 );
 }
 }
 
+box(
+0,4.05,5.55,
+7,1.2,.12,
+mat(0xd4d8d3,.55),
+station
+);
+}
 
-/* =========================================================
-CARS
-========================================================= */
+function createCars() {
+
+createCar(
+-5,-20,0,0x555e62
+);
+
+createCar(
+5,-34,Math.PI,0x77716a
+);
+
+createCar(
+-5,-76,0,0x4b5558
+);
+
+createCar(
+5,-91,Math.PI,0x67635e
+);
+}
 
 function createCar(
-x,
-z,
-rotation = 0,
-abandoned = false
+x,z,rotation,color
 ) {
 
 const car =
 new THREE.Group();
 
 car.position.set(
-x,
-0.45,
-z
+x,-1.7,z
 );
 
 car.rotation.y =
@@ -1438,2267 +450,1522 @@ rotation;
 
 scene.add(car);
 
-const bodyMaterial =
-abandoned
-? materials.rust
-: materials.metal;
+const body =
+mat(color,.42,.28);
 
 box(
-0,
-0.35,
-0,
-2.3,
-0.7,
-4.7,
-bodyMaterial,
+0,.7,0,
+3.1,.72,5.4,
+body,
 car
 );
 
 box(
-0,
-0.9,
--0.15,
-1.7,
-0.55,
-2.2,
-materials.window,
+0,1.3,-.2,
+2.6,.8,2.8,
+body,
 car
 );
 
-for (
-const zz of [
--1.5,
-1.5
-]
-) {
+const glass =
+new THREE.MeshPhysicalMaterial({
+color:0x26363b,
+roughness:.15,
+metalness:.1
+});
 
-for (
-const xx of [
--1.1,
-1.1
-]
-) {
+box(
+0,1.35,-.2,
+2.25,.55,2.35,
+glass,
+car
+);
 
 const wheel =
+mat(0x171919,.75,.1);
+
+for(
+const wx of [-1.45,1.45]
+) {
+for(
+const wz of [-1.75,1.75]
+) {
+
+const w =
 cylinder(
-xx,
--0.2,
-zz,
-0.42,
-0.28,
-materials.metal,
-12,
+wx,.4,wz,
+.45,.45,.28,
+wheel,
 car
 );
 
-wheel.rotation.z =
-Math.PI / 2;
+w.rotation.z =
+Math.PI/2;
 }
 }
-
-return car;
 }
 
+function createTrees() {
 
-function createCars() {
+const leaf =
+mat(C.tree,.96);
 
-createCar(
--13,
--20,
-Math.PI / 2,
-true
-);
+const trunk =
+mat(C.trunk,.95);
 
-createCar(
-13,
--28,
--Math.PI / 2,
-true
-);
+const positions = [
+[-24,15,1],
+[25,20,1.1],
+[-26,-5,.8],
+[26,-34,1.1],
+[-25,-55,.9],
+[26,-75,1],
+[-26,-100,1.1],
+[25,-122,.9],
+[-27,-145,1]
+];
 
-createCar(
--13,
--55,
-Math.PI / 2,
-false
-);
+positions.forEach(
+p => {
 
-createCar(
-13,
--68,
--Math.PI / 2,
-true
-);
-
-createCar(
--13,
--82,
-Math.PI / 2,
-true
-);
-
-createCar(
-13,
--91,
--Math.PI / 2,
-false
-);
-
-createCar(
--13,
--107,
-Math.PI / 2,
-true
-);
-}
-
-
-/* =========================================================
-STREET LIGHTS
-========================================================= */
-
-function createStreetLight(
-x,
-z
-) {
-
-const group =
+const tree =
 new THREE.Group();
 
-group.position.set(
-x,
-0,
-z
+tree.position.set(
+p[0],-2,p[1]
 );
 
-scene.add(group);
+tree.scale.setScalar(
+p[2]
+);
+
+scene.add(tree);
 
 cylinder(
-0,
-3.2,
-0,
-0.08,
-6.4,
-materials.metal,
-8,
-group
-);
-
-box(
-x > 0
-? -0.45
-: 0.45,
-6.3,
-0,
-0.9,
-0.1,
-0.1,
-materials.metal,
-group
-);
-
-const light =
-new THREE.PointLight(
-0xffdca4,
-1.1,
-13,
-2
-);
-
-light.position.set(
-x > 0
-? -0.5
-: 0.5,
-6.1,
-0
-);
-
-group.add(light);
-
-lights.street.push(
-light
+0,2,0,
+.2,.3,4,
+trunk,
+tree
 );
 
 sphere(
-x > 0
-? -0.5
-: 0.5,
-6.1,
-0,
-0.12,
-materials.windowLit,
-group
-);
-}
-
-
-function createStreetLights() {
-
-for (
-let z = -15;
-z >= -110;
-z -= 10
-) {
-
-createStreetLight(
--14.5,
-z
-);
-
-createStreetLight(
-14.5,
-z + 4
-);
-}
-}
-
-
-/* =========================================================
-TREES
-========================================================= */
-
-function createTree(
-x,
-z,
-scale = 1
-) {
-
-const group =
-new THREE.Group();
-
-group.position.set(
-x,
-0,
-z
-);
-
-group.scale.setScalar(
-scale
-);
-
-scene.add(group);
-
-cylinder(
-0,
-1.4,
-0,
-0.25,
-2.8,
-materials.tree,
-8,
-group
+-.4,4.3,0,
+1.25,
+leaf,
+tree
 );
 
 sphere(
-0,
-3.1,
-0,
-1.3,
-materials.leaf,
-group
+.5,4.5,.1,
+1.45,
+leaf,
+tree
 );
 
 sphere(
--0.8,
-2.7,
-0.2,
-0.8,
-materials.leaf,
-group
-);
-
-sphere(
-0.8,
-2.8,
--0.2,
-0.85,
-materials.leaf,
-group
+0,5.2,-.3,
+1.15,
+leaf,
+tree
 );
 }
-
-
-function createVegetation() {
-
-createTree(
--20,
--22,
-1.2
-);
-
-createTree(
-20,
--33,
-1
-);
-
-createTree(
--21,
--52,
-0.9
-);
-
-createTree(
-20,
--61,
-1.25
-);
-
-createTree(
--21,
--78,
-1.1
-);
-
-createTree(
-20,
--88,
-0.85
-);
-
-createTree(
--21,
--102,
-1
-);
-
-createTree(
-20,
--109,
-1.1
 );
 }
-
-
-/* =========================================================
-DEBRIS
-========================================================= */
 
 function createDebris() {
 
-for (
-let i = 0;
-i < 30;
+const concrete =
+mat(0x555957,.94);
+
+const metal =
+mat(0x3e4444,.7,.55);
+
+for(
+let i=0;
+i<90;
 i++
 ) {
 
 const x =
 THREE.MathUtils.randFloat(
--16,
-16
+-8,8
 );
 
 const z =
 THREE.MathUtils.randFloat(
--110,
--15
+-145,45
 );
 
-const s =
+if(
+Math.abs(x)<3
+) continue;
+
+const w =
 THREE.MathUtils.randFloat(
-0.15,
-0.6
+.15,1.4
 );
 
+const h =
+THREE.MathUtils.randFloat(
+.08,.5
+);
+
+const d =
+THREE.MathUtils.randFloat(
+.15,1
+);
+
+const object =
 box(
 x,
-s / 2,
+-1.9+h/2,
 z,
-s,
-s,
-s,
-i % 3 === 0
-? materials.rust
-: materials.concreteDark
+w,h,d,
+Math.random()>.65
+? metal
+: concrete
 );
-}
 
-for (
-const z of [
--35,
--59,
--82,
--104
-]
-) {
-
-cylinder(
--12,
-0.7,
-z,
-0.55,
-1.4,
-materials.rust,
-12
+object.rotation.set(
+Math.random()*.5,
+Math.random()*Math.PI,
+Math.random()*.5
 );
 }
 }
-
-
-/* =========================================================
-FERRY PIER
-========================================================= */
 
 function createPier() {
 
-box(
-0,
-0,
--112,
-19,
-0.5,
-14,
-materials.concrete
+const pier =
+new THREE.Group();
+
+pier.position.set(
+0,-2,-150
 );
 
+scene.add(pier);
+
 box(
-0,
--0.1,
--121,
-16,
-0.4,
-7,
-materials.concreteDark
+0,.2,0,
+38,.45,50,
+mat(0x655e54,.82),
+pier
 );
 
-for (
-let x = -8;
-x <= 8;
-x += 2
+const railing =
+mat(0x505756,.58,.45);
+
+for(
+let z=-23;
+z<=23;
+z+=3
 ) {
 
 cylinder(
-x,
-1.0,
--118,
-0.06,
-2,
-materials.metal,
-8
+-18,1,z,
+.055,.07,2,
+railing,
+pier
 );
 
 cylinder(
-x,
-1.0,
--109,
-0.06,
-2,
-materials.metal,
-8
+18,1,z,
+.055,.07,2,
+railing,
+pier
 );
 }
 
 box(
-0,
-1.75,
--118,
-16,
-0.08,
-0.08,
-materials.metal
+-18,1.9,0,
+.1,.1,50,
+railing,
+pier
 );
 
 box(
-0,
-1.75,
--109,
-16,
-0.08,
-0.08,
-materials.metal
+18,1.9,0,
+.1,.1,50,
+railing,
+pier
 );
 
-box(
-0,
-4.6,
--112,
-13,
-0.3,
-8,
-materials.concreteDark
-);
-
-for (
-const x of [
--6,
-6
-]
+for(
+let z=-21;
+z<=21;
+z+=7
 ) {
 
-box(
-x,
-2.3,
--112,
-0.3,
-4.6,
-0.3,
-materials.metal
-);
-}
-
-box(
-0,
-2,
--105,
-11,
-4,
-5,
-materials.wallDark
+cylinder(
+-13,-3.8,z,
+.35,.45,7,
+mat(0x4b4e4c,.9),
+pier
 );
 
-box(
-0,
-2,
--102.45,
-8,
-2.4,
-0.1,
-materials.window
-);
-
-createPierLights();
-}
-
-
-function createPierLights() {
-
-for (
-const x of [
--5,
-0,
-5
-]
-) {
-
-const light =
-new THREE.PointLight(
-0xffd8a0,
-0.8,
-10,
-2
-);
-
-light.position.set(
-x,
-4.2,
--112
-);
-
-scene.add(light);
-
-lights.station.push(
-light
+cylinder(
+13,-3.8,z,
+.35,.45,7,
+mat(0x4b4e4c,.9),
+pier
 );
 }
 }
-
-
-/* =========================================================
-WATER
-========================================================= */
 
 function createWater() {
 
 const geometry =
 new THREE.PlaneGeometry(
-90,
-70,
-50,
-40
+220,120,80,50
 );
 
-geometry.rotateX(
--Math.PI / 2
-);
-
-const position =
-geometry.attributes.position;
-
-waterData.base = [];
-
-for (
-let i = 0;
-i < position.count;
-i++
-) {
-
-waterData.base.push({
-x: position.getX(i),
-y: position.getY(i),
-z: position.getZ(i)
+const material =
+new THREE.MeshPhysicalMaterial({
+color:C.water,
+roughness:.2,
+metalness:.18,
+clearcoat:.55
 });
-}
 
-const mesh =
+water =
 new THREE.Mesh(
 geometry,
-materials.water
+material
 );
 
-mesh.position.set(
-0,
--0.35,
--137
+water.rotation.x =
+-Math.PI/2;
+
+water.position.set(
+0,-1.8,-178
 );
 
-mesh.receiveShadow = true;
-
-scene.add(mesh);
-
-waterData.mesh = mesh;
+scene.add(water);
 }
-
-
-/* =========================================================
-WATER UPDATE
-========================================================= */
 
 function updateWater(time) {
 
-if (!waterData.mesh) {
-return;
-}
+if(!water) return;
 
-const position =
-waterData.mesh.geometry
+const p =
+water.geometry
 .attributes.position;
 
-for (
-let i = 0;
-i < position.count;
+for(
+let i=0;
+i<p.count;
 i++
 ) {
 
-const base =
-waterData.base[i];
+const x =
+p.getX(i);
 
-const wave =
-Math.sin(
-base.x * 0.18 +
-time * 0.001
-) * 0.12
-+
-Math.cos(
-base.z * 0.13 +
-time * 0.0007
-) * 0.08;
+const y =
+p.getY(i);
 
-position.setY(
+p.setZ(
 i,
-base.y + wave
+Math.sin(
+x*.055+time*.7
+)*.14 +
+Math.sin(
+y*.08+time*.5
+)*.08
 );
 }
 
-position.needsUpdate = true;
+p.needsUpdate = true;
 }
 
+function createStreetLights() {
 
-/* =========================================================
-ATMOSPHERE
-========================================================= */
+const pole =
+mat(0x4b5150,.55,.4);
 
-function createAtmosphere() {
+const lampMat =
+new THREE.MeshStandardMaterial({
+color:0xffd18a,
+emissive:0xffa24d,
+emissiveIntensity:1.8
+});
 
-scene.fog =
-new THREE.FogExp2(
-0x252b2d,
-0.012
+for(
+let z=45;
+z>-130;
+z-=22
+) {
+
+cylinder(
+-11,2,z,
+.09,.13,8,
+pole
 );
 
-scene.background =
-new THREE.Color(
-0x252b2d
+box(
+-11,6.1,z,
+1.8,.1,.1,
+pole
 );
+
+box(
+-11.9,6,z,
+.45,.18,.35,
+lampMat
+);
+
+const light =
+new THREE.PointLight(
+0xffbd78,
+1.1,
+14
+);
+
+light.position.set(
+-11.9,5.9,z
+);
+
+scene.add(light);
+}
 }
 
+function createCharacter(
+shirtColor
+) {
 
-/* =========================================================
-LIGHTING
-========================================================= */
+const group =
+new THREE.Group();
 
-function createLighting() {
+const skin =
+new THREE.MeshPhysicalMaterial({
+color:C.skin,
+roughness:.7,
+clearcoat:.12
+});
 
-const ambient =
-new THREE.HemisphereLight(
-0x87908d,
-0x151719,
-1.05
+const shirt =
+mat(
+shirtColor,
+.82
 );
 
-scene.add(ambient);
+const pants =
+mat(C.pants,.92);
 
-const moon =
-new THREE.DirectionalLight(
-0x8794a1,
-1.25
+box(
+0,1.45,0,
+.72,1.35,.42,
+shirt,
+group
 );
 
-moon.position.set(
--25,
-35,
-20
+sphere(
+0,2.45,0,
+.29,
+skin,
+group
 );
 
-moon.castShadow = true;
+sphere(
+0,2.63,-.01,
+.30,
+mat(0x202020,.95),
+group
+);
 
-moon.shadow.mapSize.width =
-2048;
+box(
+-.19,.48,0,
+.3,.95,.34,
+pants,
+group
+);
 
-moon.shadow.mapSize.height =
-2048;
+box(
+.19,.48,0,
+.3,.95,.34,
+pants,
+group
+);
 
-moon.shadow.camera.left =
--45;
+cylinder(
+-.48,1.45,0,
+.11,.13,1.2,
+shirt,
+group
+);
 
-moon.shadow.camera.right =
-45;
+cylinder(
+.48,1.45,0,
+.11,.13,1.2,
+shirt,
+group
+);
 
-moon.shadow.camera.top =
-45;
-
-moon.shadow.camera.bottom =
--45;
-
-scene.add(moon);
+return group;
 }
 
+function createDaniel() {
 
-/* =========================================================
-PLAYER
-========================================================= */
-
-function createPlayer() {
-
-player = {
-position:
-new THREE.Vector3(
-0,
-1.65,
--10
-),
-velocity:
-new THREE.Vector3()
-};
-
-camera.position.copy(
-player.position
+daniel =
+createCharacter(
+0x39474a
 );
 
-state.yaw = 0;
-state.pitch = 0;
-}
+daniel.position.set(
+0,-2,-126
+);
 
+daniel.rotation.y =
+Math.PI;
+
+daniel.visible = false;
+
+scene.add(daniel);
+}
 
 function createFlashlight() {
 
-flashlight =
+const light =
 new THREE.SpotLight(
-0xffffff,
-4.0,
-28,
-Math.PI / 7,
-0.45,
-1.2
+0xeaf3ff,
+3.8,
+30,
+Math.PI/7,
+.4,
+1.3
 );
 
-flashlight.position.set(
-0,
-0,
-0
-);
+light.castShadow = true;
 
-flashlightTarget =
+scene.add(light);
+
+player.flashlight =
+light;
+
+player.flashTarget =
 new THREE.Object3D();
 
-flashlightTarget.position.set(
-0,
-0,
--10
-);
-
 scene.add(
-flashlightTarget
+player.flashTarget
 );
 
-flashlight.target =
-flashlightTarget;
+light.target =
+player.flashTarget;
+}
 
-camera.add(
-flashlight
+function updateFlashlight() {
+
+if(
+!player.flashlight
+) return;
+
+player.flashlight.position.copy(
+camera.position
 );
 
-camera.add(
-flashlightTarget
-);
-}
-
-
-/* =========================================================
-PLAYER LOOK
-========================================================= */
-
-function updateCamera() {
-
-camera.rotation.order =
-"YXZ";
-
-camera.rotation.y =
-state.yaw;
-
-camera.rotation.x =
-state.pitch;
-
-flashlightTarget.position.set(
-0,
-0,
--10
-);
-}
-
-
-/* =========================================================
-PLAYER MOVEMENT
-========================================================= */
-
-function updatePlayer(delta) {
-
-if (
-!gameStarted ||
-endingStarted
-) {
-return;
-}
-
-let forward = 0;
-let right = 0;
-
-if (
-keys["KeyW"] ||
-keys["ArrowUp"]
-) {
-forward += 1;
-}
-
-if (
-keys["KeyS"] ||
-keys["ArrowDown"]
-) {
-forward -= 1;
-}
-
-if (
-keys["KeyD"] ||
-keys["ArrowRight"]
-) {
-right += 1;
-}
-
-if (
-keys["KeyA"] ||
-keys["ArrowLeft"]
-) {
-right -= 1;
-}
-
-if (touch.active) {
-
-if (
-Math.abs(touch.y) > 20
-) {
-forward +=
--touch.y / 80;
-}
-
-if (
-Math.abs(touch.x) > 20
-) {
-right +=
-touch.x / 80;
-}
-}
-
-const length =
-Math.sqrt(
-forward * forward +
-right * right
-);
-
-if (length > 1) {
-
-forward /= length;
-right /= length;
-}
-
-const moving =
-Math.abs(forward) > 0.05 ||
-Math.abs(right) > 0.05;
-
-state.sprint =
-keys["ShiftLeft"] ||
-keys["ShiftRight"];
-
-const speed =
-state.sprint
-? 6.0
-: 3.8;
-
-const direction =
-new THREE.Vector3();
-
-direction.z =
--forward;
-
-direction.x =
-right;
-
-direction.applyAxisAngle(
+const dir =
 new THREE.Vector3(
-0,
-1,
-0
-),
-state.yaw
+0,0,-1
 );
 
-player.position.addScaledVector(
-direction,
-speed * delta
+dir.applyQuaternion(
+camera.quaternion
 );
 
-player.position.x =
-THREE.MathUtils.clamp(
-player.position.x,
--11.3,
-11.3
+player.flashTarget.position.copy(
+camera.position
 );
 
-player.position.z =
-THREE.MathUtils.clamp(
-player.position.z,
--120,
--5
-);
-
-camera.position.copy(
-player.position
-);
-
-updateCamera();
-
-if (moving) {
-
-if (
-performance.now() -
-lastStepTime >
-(
-state.sprint
-? 270
-: 390
-)
-) {
-
-playFootstep();
-
-lastStepTime =
-performance.now();
-}
-}
-}
-
-
-/* =========================================================
-KEYBOARD
-========================================================= */
-
-window.addEventListener(
-"keydown",
-event => {
-
-keys[event.code] = true;
-
-if (
-event.code === "KeyF" &&
-gameStarted &&
-flashlight
-) {
-
-state.flashlight =
-!state.flashlight;
-
-flashlight.intensity =
-state.flashlight
-? 4.0
-: 0;
-}
-}
-);
-
-
-window.addEventListener(
-"keyup",
-event => {
-
-keys[event.code] = false;
-}
-);
-
-
-/* =========================================================
-MOUSE LOOK
-========================================================= */
-
-let mouseDown = false;
-
-let previousMouseX = 0;
-let previousMouseY = 0;
-
-window.addEventListener(
-"mousedown",
-event => {
-
-if (!gameStarted) {
-return;
-}
-
-mouseDown = true;
-
-previousMouseX =
-event.clientX;
-
-previousMouseY =
-event.clientY;
-}
-);
-
-
-window.addEventListener(
-"mouseup",
-() => {
-
-mouseDown = false;
-}
-);
-
-
-window.addEventListener(
-"mousemove",
-event => {
-
-if (
-!mouseDown ||
-!gameStarted
-) {
-return;
-}
-
-const dx =
-event.clientX -
-previousMouseX;
-
-const dy =
-event.clientY -
-previousMouseY;
-
-previousMouseX =
-event.clientX;
-
-previousMouseY =
-event.clientY;
-
-state.yaw -=
-dx * 0.0023;
-
-state.pitch -=
-dy * 0.0018;
-
-state.pitch =
-THREE.MathUtils.clamp(
-state.pitch,
--1.35,
-1.35
+player.flashTarget.position.add(
+dir.multiplyScalar(12)
 );
 }
-);
 
+function createHUD() {
 
-/* =========================================================
-TOUCH
-========================================================= */
+let hud =
+document.getElementById("hud");
 
-window.addEventListener(
-"touchstart",
-event => {
+if(!hud) {
 
-if (!gameStarted) {
-return;
+hud =
+document.createElement("div");
+
+hud.id = "hud";
+
+hud.style.position =
+"fixed";
+
+hud.style.left =
+"18px";
+
+hud.style.top =
+"18px";
+
+hud.style.color =
+"#fff";
+
+hud.style.fontFamily =
+"Arial,sans-serif";
+
+hud.style.fontSize =
+"13px";
+
+hud.style.textShadow =
+"0 2px 8px #000";
+
+hud.style.zIndex =
+"2000";
+
+document.body.appendChild(hud);
 }
 
-const t =
-event.touches[0];
-
-if (!t) {
-return;
+hud.innerHTML =
+"屯門碼頭 — 五年後<br>" +
+"目標：尋找 Daniel";
 }
 
-touch.active = true;
-
-touch.x = 0;
-touch.y = 0;
-
-touch.lookX =
-t.clientX;
-
-touch.lookY =
-t.clientY;
-},
-{
-passive: true
-}
-);
-
-
-window.addEventListener(
-"touchmove",
-event => {
-
-if (!gameStarted) {
-return;
-}
-
-const t =
-event.touches[0];
-
-if (!t) {
-return;
-}
-
-const dx =
-t.clientX -
-touch.lookX;
-
-const dy =
-t.clientY -
-touch.lookY;
-
-touch.x = dx;
-touch.y = dy;
-
-state.yaw -=
-dx * 0.0015;
-
-state.pitch -=
-dy * 0.0011;
-
-state.pitch =
-THREE.MathUtils.clamp(
-state.pitch,
--1.35,
-1.35
-);
-
-touch.lookX =
-t.clientX;
-
-touch.lookY =
-t.clientY;
-},
-{
-passive: true
-}
-);
-
-
-window.addEventListener(
-"touchend",
-() => {
-
-touch.active = false;
-
-touch.x = 0;
-touch.y = 0;
-},
-{
-passive: true
-}
-);
-
-
-/* =========================================================
-AUDIO
-========================================================= */
-
-function initAudio() {
-
-if (audio.enabled) {
-return;
-}
-
-try {
-
-const AudioContext =
-window.AudioContext ||
-window.webkitAudioContext;
-
-if (!AudioContext) {
-return;
-}
-
-audio.ctx =
-new AudioContext();
-
-audio.master =
-audio.ctx.createGain();
-
-audio.master.gain.value =
-0.22;
-
-audio.master.connect(
-audio.ctx.destination
-);
-
-createOceanSound();
-createWindSound();
-
-audio.enabled = true;
-
-} catch (error) {
-
-console.warn(
-"[AMY V7.1] Audio unavailable:",
-error
-);
-}
-}
-
-
-function createOceanSound() {
-
-if (!audio.ctx) {
-return;
-}
-
-const ctx =
-audio.ctx;
-
-const buffer =
-ctx.createBuffer(
-1,
-ctx.sampleRate * 3,
-ctx.sampleRate
-);
-
-const data =
-buffer.getChannelData(0);
-
-for (
-let i = 0;
-i < data.length;
-i++
-) {
-
-data[i] =
-(
-Math.random() * 2 - 1
-) * 0.15;
-}
-
-const source =
-ctx.createBufferSource();
-
-source.buffer = buffer;
-source.loop = true;
-
-const filter =
-ctx.createBiquadFilter();
-
-filter.type =
-"lowpass";
-
-filter.frequency.value =
-650;
-
-const gain =
-ctx.createGain();
-
-gain.gain.value =
-0.035;
-
-source
-.connect(filter)
-.connect(gain)
-.connect(audio.master);
-
-source.start();
-
-audio.ocean = gain;
-}
-
-
-function createWindSound() {
-
-if (!audio.ctx) {
-return;
-}
-
-const ctx =
-audio.ctx;
-
-const buffer =
-ctx.createBuffer(
-1,
-ctx.sampleRate * 2,
-ctx.sampleRate
-);
-
-const data =
-buffer.getChannelData(0);
-
-for (
-let i = 0;
-i < data.length;
-i++
-) {
-
-data[i] =
-(
-Math.random() * 2 - 1
-) * 0.08;
-}
-
-const source =
-ctx.createBufferSource();
-
-source.buffer = buffer;
-source.loop = true;
-
-const filter =
-ctx.createBiquadFilter();
-
-filter.type =
-"lowpass";
-
-filter.frequency.value =
-420;
-
-const gain =
-ctx.createGain();
-
-gain.gain.value =
-0.018;
-
-source
-.connect(filter)
-.connect(gain)
-.connect(audio.master);
-
-source.start();
-
-audio.wind = gain;
-}
-
-
-function playFootstep() {
-
-if (
-!audio.enabled ||
-!audio.ctx ||
-!audio.master
-) {
-return;
-}
-
-try {
-
-const ctx =
-audio.ctx;
-
-const oscillator =
-ctx.createOscillator();
-
-const gain =
-ctx.createGain();
-
-oscillator.type =
-"triangle";
-
-oscillator.frequency.value =
-75 +
-Math.random() * 20;
-
-gain.gain.setValueAtTime(
-0.045,
-ctx.currentTime
-);
-
-gain.gain.exponentialRampToValueAtTime(
-0.001,
-ctx.currentTime + 0.12
-);
-
-oscillator
-.connect(gain)
-.connect(audio.master);
-
-oscillator.start();
-
-oscillator.stop(
-ctx.currentTime + 0.13
-);
-
-} catch (error) {
-
-console.warn(
-"[AMY V7.1] Footstep audio error:",
-error
-);
-}
-}
-
-
-/* =========================================================
-RADIO
-========================================================= */
-
-function playRadioStatic() {
-
-if (
-!audio.enabled ||
-!audio.ctx ||
-!audio.master
-) {
-return;
-}
-
-try {
-
-const ctx =
-audio.ctx;
-
-const buffer =
-ctx.createBuffer(
-1,
-ctx.sampleRate * 1.5,
-ctx.sampleRate
-);
-
-const data =
-buffer.getChannelData(0);
-
-for (
-let i = 0;
-i < data.length;
-i++
-) {
-
-data[i] =
-(
-Math.random() * 2 - 1
-) * 0.2;
-}
-
-const source =
-ctx.createBufferSource();
-
-source.buffer = buffer;
-
-const filter =
-ctx.createBiquadFilter();
-
-filter.type =
-"bandpass";
-
-filter.frequency.value =
-1600;
-
-filter.Q.value =
-1.5;
-
-const gain =
-ctx.createGain();
-
-gain.gain.value =
-0.08;
-
-source
-.connect(filter)
-.connect(gain)
-.connect(audio.master);
-
-source.start();
-
-} catch (error) {
-
-console.warn(
-"[AMY V7.1] Radio audio error:",
-error
-);
-}
-}
-
-
-/* =========================================================
-MESSAGE
-========================================================= */
-
-function showMessage(
+function message(
 text,
-duration = 3500
+duration=4000
 ) {
 
-if (!messageUI) {
-return;
-}
-
-messageUI.innerHTML =
-text;
-
-messageUI.style.opacity =
-"1";
-
-clearTimeout(
-state.messageTimer
+let el =
+document.getElementById(
+"message"
 );
 
-state.messageTimer =
+if(!el) {
+
+el =
+document.createElement(
+"div"
+);
+
+el.id = "message";
+
+el.style.position =
+"fixed";
+
+el.style.left =
+"50%";
+
+el.style.bottom =
+"12%";
+
+el.style.transform =
+"translateX(-50%)";
+
+el.style.width =
+"90%";
+
+el.style.maxWidth =
+"850px";
+
+el.style.textAlign =
+"center";
+
+el.style.color =
+"#fff";
+
+el.style.fontFamily =
+"Arial,sans-serif";
+
+el.style.fontSize =
+"clamp(18px,3vw,28px)";
+
+el.style.lineHeight =
+"1.7";
+
+el.style.textShadow =
+"0 3px 14px #000";
+
+el.style.zIndex =
+"5000";
+
+el.style.pointerEvents =
+"none";
+
+document.body.appendChild(el);
+}
+
+el.innerHTML = text;
+el.style.opacity = "1";
+
+clearTimeout(el.timer);
+
+el.timer =
 setTimeout(
-() => {
-
-messageUI.style.opacity =
+()=>{
+el.style.opacity =
 "0";
-
 },
 duration
 );
 }
 
+function speak(text) {
 
-/* =========================================================
-STORY
-========================================================= */
+if(
+!window.speechSynthesis
+) return;
 
-const story = [
+try {
 
-{
-z: -25,
-objective:
-"繼續前往屯門碼頭",
-text:
-"Amy：五年了……呢度仲係咁安靜。"
-},
+speechSynthesis.cancel();
 
-{
-z: -45,
-objective:
-"尋找任何生還者留下嘅痕跡",
-text:
-"Amy：Daniel……你究竟去咗邊？"
-},
-
-{
-z: -62,
-objective:
-"調查輕鐵站附近",
-text:
-"遠處傳來微弱嘅無線電雜訊……"
-},
-
-{
-z: -75,
-objective:
-"尋找無線電訊號來源",
-text:
-"無線電：……有人嗎？……有人聽到嗎？"
-},
-
-{
-z: -91,
-objective:
-"前往屯門碼頭",
-text:
-"Amy：呢個聲音……我認得。"
-},
-
-{
-z: -104,
-objective:
-"前往碼頭盡頭",
-text:
-"無線電：Amy……如果你聽到……嚟碼頭。"
-},
-
-{
-z: -112,
-objective:
-"尋找 Daniel",
-text:
-"Amy：Daniel？！"
-},
-
-{
-z: -117,
-objective:
-"……",
-text:
-"Daniel：Amy……真係你。"
-}
-];
-
-
-function updateStory() {
-
-if (
-endingStarted ||
-!gameStarted ||
-!player
-) {
-return;
-}
-
-const z =
-player.position.z;
-
-let index = -1;
-
-for (
-let i = 0;
-i < story.length;
-i++
-) {
-
-if (
-z <= story[i].z
-) {
-
-index = i;
-}
-}
-
-if (
-index >= 0 &&
-index !== currentStory
-) {
-
-currentStory =
-index;
-
-objectiveUI.innerHTML =
-"<b>OBJECTIVE</b><br>" +
-story[index].objective;
-
-showMessage(
-story[index].text,
-4200
+const u =
+new SpeechSynthesisUtterance(
+text
 );
 
-if (index === 3) {
+u.lang = "zh-HK";
+u.rate = .9;
+u.pitch = 1;
+u.volume = .8;
 
-if (!state.radioPlayed) {
+const voices =
+speechSynthesis.getVoices();
 
-state.radioPlayed =
-true;
+const voice =
+voices.find(
+v =>
+v.lang &&
+(
+v.lang
+.toLowerCase()
+.includes("zh-hk") ||
+v.lang
+.toLowerCase()
+.includes("yue")
+)
+);
 
-playRadioStatic();
+if(voice)
+u.voice = voice;
+
+speechSynthesis.speak(u);
+
+} catch(e) {
+console.warn(e);
 }
 }
 
-if (index === 7) {
+function startGame() {
 
-if (!state.danielPlayed) {
+if(gameStarted)
+return;
 
-state.danielPlayed =
-true;
+gameStarted = true;
 
-playRadioStatic();
+if(startScreen) {
+
+startScreen.style.display =
+"none";
+
+startScreen.style.pointerEvents =
+"none";
+}
+
+try {
+
+if(
+window.AudioContext ||
+window.webkitAudioContext
+) {
+const AC =
+window.AudioContext ||
+window.webkitAudioContext;
+
+const ctx =
+new AC();
+
+if(
+ctx.state ===
+"suspended"
+) {
+ctx.resume();
+}
+}
+
+} catch(e) {}
+
+createHUD();
+
+message(
+"五年後，屯門碼頭。<br>" +
+"Amy 開始尋找失聯已久嘅 Daniel。",
+5500
+);
+
+speak(
+"Daniel……你仲喺唔喺度？"
+);
+}
+
+function setupInput() {
+
+document.addEventListener(
+"pointerdown",
+e => {
+
+if(
+e.target &&
+(
+e.target.id ===
+"startButton" ||
+e.target.closest?.(
+"#startButton"
+)
+)
+) {
+
+e.preventDefault();
+e.stopPropagation();
+startGame();
+}
+
+},
+true
+);
+
+document.addEventListener(
+"click",
+e => {
+
+if(
+e.target &&
+(
+e.target.id ===
+"startButton" ||
+e.target.closest?.(
+"#startButton"
+)
+)
+) {
+
+e.preventDefault();
+e.stopPropagation();
+startGame();
+}
+
+},
+true
+);
+
+window.addEventListener(
+"keydown",
+e => {
+keys[e.code] = true;
+}
+);
+
+window.addEventListener(
+"keyup",
+e => {
+keys[e.code] = false;
+}
+);
+
+renderer.domElement.addEventListener(
+"click",
+() => {
+
+if(
+gameStarted &&
+!cinematic
+) {
+
+try {
+renderer.domElement
+.requestPointerLock();
+} catch(e) {}
+}
+}
+);
+
+document.addEventListener(
+"mousemove",
+e => {
+
+if(
+document.pointerLockElement !==
+renderer.domElement
+) return;
+
+if(
+!gameStarted ||
+cinematic ||
+ending
+) return;
+
+yaw -=
+e.movementX*.0022;
+
+pitch -=
+e.movementY*.0018;
+
+pitch =
+THREE.MathUtils.clamp(
+pitch,
+-1.1,
+1.1
+);
+}
+);
+}
+
+function updatePlayer(delta) {
+
+if(
+!gameStarted ||
+cinematic ||
+ending
+) return;
+
+let forward = 0;
+let side = 0;
+
+if(
+keys.KeyW ||
+keys.ArrowUp
+) forward++;
+
+if(
+keys.KeyS ||
+keys.ArrowDown
+) forward--;
+
+if(
+keys.KeyA ||
+keys.ArrowLeft
+) side--;
+
+if(
+keys.KeyD ||
+keys.ArrowRight
+) side++;
+
+const dir =
+new THREE.Vector3(
+0,0,-1
+);
+
+dir.applyQuaternion(
+camera.quaternion
+);
+
+dir.y = 0;
+dir.normalize();
+
+const right =
+new THREE.Vector3(
+dir.z,
+0,
+-dir.x
+);
+
+const movement =
+new THREE.Vector3();
+
+movement.addScaledVector(
+dir,
+forward
+);
+
+movement.addScaledVector(
+right,
+side
+);
+
+if(
+movement.lengthSq()>0
+) {
+
+movement.normalize();
+
+const speed =
+keys.ShiftLeft ||
+keys.ShiftRight
+? RUN_SPEED
+: WALK_SPEED;
+
+player.position.addScaledVector(
+movement,
+speed*delta
+);
+}
+
+player.position.x =
+THREE.MathUtils.clamp(
+player.position.x,
+-8.5,
+8.5
+);
+
+player.position.z =
+THREE.MathUtils.clamp(
+player.position.z,
+-145,
+30
+);
+
+camera.position.copy(
+player.position
+);
+
+camera.rotation.order =
+"YXZ";
+
+camera.rotation.y = yaw;
+camera.rotation.x = pitch;
+
+updateFlashlight();
+}
+
+function checkStory() {
+
+if(
+!gameStarted ||
+cinematic ||
+ending
+) return;
+
+const z =
+camera.position.z;
+
+if(
+storyStep === 0 &&
+z < -42
+) {
+
+storyStep = 1;
+
+message(
+"前面係荒廢咗嘅輕鐵站……",
+4500
+);
+
+speak(
+"前面係輕鐵站……"
+);
+}
+
+else if(
+storyStep === 1 &&
+z < -72
+) {
+
+storyStep = 2;
+
+message(
+"收音機突然收到微弱訊號……",
+4500
+);
+
+speak(
+"有人收到嗎……請去碼頭。"
+);
+}
+
+else if(
+storyStep === 2 &&
+z < -100
+) {
+
+storyStep = 3;
+
+message(
+"無線電：「Amy……如果係你……嚟碼頭。」",
+5000
+);
+
+speak(
+"Amy……如果係你……嚟碼頭。"
+);
+}
+
+else if(
+storyStep === 3 &&
+z < -119
+) {
+
+storyStep = 4;
+
+startReunion();
+}
+}
+
+function startReunion() {
+
+cinematic = true;
+reunionTime =
+performance.now();
+
+if(!daniel)
+createDaniel();
+
+daniel.visible = true;
+
+daniel.position.set(
+0,-2,-126
+);
+
+message(
+"遠處一個熟悉嘅身影慢慢轉身……",
+4500
+);
+
+speak(
+"Daniel……係你？"
+);
+}
+
+function updateReunion(time) {
+
+if(!cinematic)
+return;
+
+const t =
+time -
+reunionTime;
+
+if(t < 3500) {
+
+const p =
+THREE.MathUtils.clamp(
+t/3500,
+0,1
+);
+
+camera.position.lerp(
+new THREE.Vector3(
+0,2,-119
+),
+.025
+);
+
+camera.lookAt(
+0,1.5,-126
+);
+}
+
+else if(t < 7000) {
+
+daniel.position.z =
+THREE.MathUtils.lerp(
+-126,
+-122,
+(t-3500)/3500
+);
+
+camera.lookAt(
+0,1.5,-123
+);
+
+}
+
+else if(t < 10500) {
+
+const p =
+(t-7000)/3500;
+
+daniel.position.z =
+THREE.MathUtils.lerp(
+-122,
+-119.8,
+p
+);
+
+camera.position.set(
+2.8-p*1.4,
+2.2,
+-120.5-p*1.2
+);
+
+camera.lookAt(
+0,1.5,-120
+);
+
+}
+
+else if(t < 14000) {
+
+camera.position.set(
+1.4,
+2.0,
+-122.5
+);
+
+camera.lookAt(
+0,
+1.45,
+-120
+);
+
+}
+
+else {
+
+cinematic = false;
+
+message(
+"五年嘅等待，終於完結。<br>" +
+"Amy 同 Daniel 再次相遇。",
+5000
+);
+
+speak(
+"我等咗你好耐。"
+);
 
 setTimeout(
 startEnding,
-2500
+5000
 );
 }
 }
+
+function startEnding() {
+
+ending = true;
+
+if(
+document.pointerLockElement
+) {
+document.exitPointerLock();
 }
+
+createSettlement();
+
+message(
+"數年後……",
+5000
+);
+
+setTimeout(
+()=>{
+showEnding(
+"屯門海旁重新建立起一個生存社區。"
+);
+},
+5000
+);
+
+setTimeout(
+()=>{
+showEnding(
+"Amy 同 Daniel 結婚，<br>" +
+"並建立咗屬於自己嘅家庭。"
+);
+},
+10000
+);
+
+setTimeout(
+()=>{
+showEnding(
+"世界曾經終結。<br>" +
+"<strong>但人類重新開始。</strong>"
+);
+},
+16000
+);
 }
 
-
-/* =========================================================
-DANIEL
-========================================================= */
-
-function createDaniel() {
+function createSettlement() {
 
 const group =
 new THREE.Group();
 
-group.position.set(
-0,
-0,
--119
-);
-
 scene.add(group);
 
+const wood =
+mat(0x625140,.92);
+
+const canvas =
+mat(0xa69d88,.98);
+
+for(
+let i=0;
+i<5;
+i++
+) {
+
+const x =
+-10+i*5;
+
 box(
-0,
-1.0,
-0,
-0.75,
-1.6,
-0.42,
-materials.wallDark,
+x,-1.5,-146,
+4,.35,4,
+wood,
 group
 );
+
+box(
+x,.7,-146,
+4,.12,4,
+canvas,
+group
+);
+}
+
+const fire =
+new THREE.PointLight(
+0xff9c45,
+2.8,
+14
+);
+
+fire.position.set(
+0,.5,-153
+);
+
+group.add(fire);
 
 sphere(
-0,
-2.05,
-0,
-0.32,
-materials.wall,
+0,-1.1,-153,
+.35,
+new THREE.MeshBasicMaterial({
+color:0xff8a38
+}),
 group
 );
 
-box(
--0.2,
-0.05,
-0,
-0.2,
-0.8,
-0.25,
-materials.metal,
-group
+const people = [
+[-13,-151],
+[-8,-158],
+[8,-158],
+[13,-151]
+];
+
+people.forEach(
+p => {
+
+const person =
+createCharacter(
+Math.random()>.5
+? 0x4a5552
+: 0x55504a
 );
 
-box(
-0.2,
-0.05,
-0,
-0.2,
-0.8,
-0.25,
-materials.metal,
-group
+person.position.set(
+p[0],-2,p[1]
 );
 
-const light =
-new THREE.PointLight(
-0xffbd75,
-1.1,
+group.add(person);
+}
+);
+
+const amyFinal =
+createCharacter(
+0x4c5957
+);
+
+amyFinal.position.set(
+-1.2,-2,-148
+);
+
+group.add(
+amyFinal
+);
+
+const danielFinal =
+createCharacter(
+0x39474a
+);
+
+danielFinal.position.set(
+1.2,-2,-148
+);
+
+group.add(
+danielFinal
+);
+
+const child =
+createCharacter(
+0x68635b
+);
+
+child.scale.setScalar(
+.55
+);
+
+child.position.set(
+0,-2,-146.8
+);
+
+group.add(
+child
+);
+
+camera.position.set(
+17,
 7,
-2
+-133
 );
 
-light.position.set(
-1,
-1.5,
-0
-);
-
-group.add(light);
-
-daniel = group;
-
-return group;
-}
-
-
-/* =========================================================
-ENDING
-========================================================= */
-
-function startEnding() {
-
-if (endingStarted) {
-return;
-}
-
-endingStarted = true;
-
-endingStage = 0;
-
-state.endingTimer =
-performance.now();
-
-objectiveUI.innerHTML =
-"<b>ENDING</b><br>與 Daniel 重逢";
-
-showMessage(
-"Daniel：Amy……我等咗你好耐。",
-5000
-);
-
-setTimeout(
-() => {
-
-showMessage(
-"Amy：我終於搵到你。",
-5000
-);
-
-},
-5200
-);
-
-setTimeout(
-() => {
-
-endingStage = 1;
-
-showMessage(
-"兩個人離開碼頭，開始建立屬於倖存者嘅新家園。",
-6000
-);
-
-},
-11000
-);
-
-setTimeout(
-() => {
-
-endingStage = 2;
-
-showMessage(
-"五年後……屯門碼頭重新出現燈光。",
-6000
-);
-
-},
-18000
-);
-
-setTimeout(
-() => {
-
-endingStage = 3;
-
-showFinalEnding();
-
-},
-25000
+camera.lookAt(
+0,
+0,
+-150
 );
 }
 
+function showEnding(text) {
 
-function showFinalEnding() {
-
-const existing =
+let overlay =
 document.getElementById(
-"finalEnding"
+"endingOverlay"
 );
 
-if (existing) {
-return;
-}
+if(!overlay) {
 
-const overlay =
-document.createElement("div");
+overlay =
+document.createElement(
+"div"
+);
 
 overlay.id =
-"finalEnding";
+"endingOverlay";
 
-Object.assign(
-overlay.style,
-{
-position: "fixed",
-inset: "0",
-zIndex: "200000",
-display: "flex",
-flexDirection: "column",
-justifyContent: "center",
-alignItems: "center",
-background:
-"rgba(0,0,0,.88)",
-color: "#ffffff",
-textAlign: "center",
-fontFamily:
-"Arial, sans-serif",
-padding: "30px",
-boxSizing: "border-box"
-}
-);
+overlay.style.position =
+"fixed";
 
-overlay.innerHTML = `
-<div style="
-font-size:38px;
-font-weight:bold;
-margin-bottom:24px;
-">
-FIVE YEARS LATER
-</div>
+overlay.style.inset =
+"0";
 
-<div style="
-font-size:21px;
-line-height:1.8;
-max-width:720px;
-">
-屯門碼頭重新亮起燈光。<br>
-倖存者開始建立一個新嘅社區。<br>
-Amy 同 Daniel 一齊守護住呢個地方。<br><br>
+overlay.style.display =
+"flex";
 
-佢哋結婚，建立家庭。<br>
-新一代嘅孩子，終於可以喺冇戰爭、冇恐懼嘅世界成長。
-</div>
+overlay.style.alignItems =
+"center";
 
-<div style="
-margin-top:45px;
-font-size:30px;
-letter-spacing:5px;
-">
-THE WORLD ENDED.
-</div>
+overlay.style.justifyContent =
+"center";
 
-<div style="
-margin-top:12px;
-font-size:30px;
-letter-spacing:5px;
-">
-WE BEGAN AGAIN.
-</div>
+overlay.style.textAlign =
+"center";
 
-<div style="
-margin-top:45px;
-font-size:14px;
-opacity:.55;
-">
-AMY — FIVE YEARS AFTER · ${VERSION}
-</div>
-`;
+overlay.style.padding =
+"30px";
+
+overlay.style.boxSizing =
+"border-box";
+
+overlay.style.background =
+"rgba(0,0,0,.42)";
+
+overlay.style.color =
+"#fff";
+
+overlay.style.fontFamily =
+"Arial,sans-serif";
+
+overlay.style.fontSize =
+"clamp(20px,4vw,42px)";
+
+overlay.style.lineHeight =
+"1.7";
+
+overlay.style.textShadow =
+"0 3px 18px #000";
+
+overlay.style.zIndex =
+"8000";
 
 document.body.appendChild(
 overlay
 );
 }
 
+overlay.innerHTML =
+`<div>${text}</div>`;
+}
 
-/* =========================================================
-ENVIRONMENT UPDATE
-========================================================= */
+function animate() {
 
-function updateEnvironment(time) {
-
-lights.street.forEach(
-(light, index) => {
-
-const flicker =
-Math.sin(
-time * 0.002 +
-index * 3.7
+requestAnimationFrame(
+animate
 );
 
-if (
-Math.abs(flicker) >
-0.96
-) {
-
-light.intensity =
-0.2;
-
-} else {
-
-light.intensity =
-1.0;
-}
-}
+const delta =
+Math.min(
+clock.getDelta(),
+.05
 );
 
-lights.station.forEach(
-(light, index) => {
+const time =
+performance.now()*.001;
 
-light.intensity =
-0.65 +
-Math.sin(
-time * 0.0013 +
-index
-) * 0.12;
+updateWater(time);
+
+if(gameStarted) {
+
+updatePlayer(delta);
+checkStory();
 }
+
+if(cinematic) {
+updateReunion(
+performance.now()
 );
 }
 
-
-/* =========================================================
-RESIZE
-========================================================= */
-
-function resize() {
-
-if (
-!camera ||
-!renderer
-) {
-return;
-}
-
-camera.aspect =
-window.innerWidth /
-window.innerHeight;
-
-camera.updateProjectionMatrix();
-
-renderer.setSize(
-window.innerWidth,
-window.innerHeight
+renderer.render(
+scene,
+camera
 );
 }
-
-
-window.addEventListener(
-"resize",
-resize
-);
-
-
-/* =========================================================
-START GAME V7.1
-強制啟動版
-========================================================= */
-
-function startGame() {
-
-if (gameStarted) {
-return;
-}
-
-console.log(
-"[AMY V7.1] START GAME"
-);
-
-// 立即標記遊戲開始
-gameStarted = true;
-
-const screen =
-document.getElementById(
-"startScreen"
-);
-
-const button =
-document.getElementById(
-"startButton"
-);
-
-// 強制移除開始畫面
-if (screen) {
-
-screen.style.display =
-"none";
-
-screen.style.visibility =
-"hidden";
-
-screen.style.opacity =
-"0";
-
-screen.style.pointerEvents =
-"none";
-
-screen.style.zIndex =
-"-1";
-}
-
-if (button) {
-
-button.disabled = true;
-
-button.style.pointerEvents =
-"none";
-}
-
-// Audio 不能阻止遊戲開始
-try {
-
-initAudio();
-
-if (
-audio.ctx &&
-audio.ctx.state ===
-"suspended"
-) {
-
-audio.ctx.resume()
-.catch(
-error => {
-
-console.warn(
-"[AMY V7.1] Audio resume failed:",
-error
-);
-}
-);
-}
-
-} catch (error) {
-
-console.warn(
-"[AMY V7.1] Audio unavailable:",
-error
-);
-}
-
-objectiveUI.innerHTML =
-"<b>OBJECTIVE</b><br>尋找 Daniel";
-
-showMessage(
-"五年後，屯門碼頭。<br>Amy 開始尋找失聯已久嘅 Daniel。",
-5000
-);
-
-console.log(
-"[AMY V7.1] GAME STARTED SUCCESSFULLY"
-);
-}
-
-
-/* =========================================================
-START BUTTON — POINTERDOWN
-========================================================= */
-
-document.addEventListener(
-"pointerdown",
-function(event) {
-
-const target =
-event.target.closest(
-"#startButton"
-);
-
-if (!target) {
-return;
-}
-
-event.preventDefault();
-event.stopPropagation();
-
-console.log(
-"[AMY V7.1] START BUTTON POINTERDOWN"
-);
-
-startGame();
-
-},
-true
-);
-
-
-/* =========================================================
-START BUTTON — CLICK
-========================================================= */
-
-document.addEventListener(
-"click",
-function(event) {
-
-const target =
-event.target.closest(
-"#startButton"
-);
-
-if (!target) {
-return;
-}
-
-event.preventDefault();
-event.stopPropagation();
-
-console.log(
-"[AMY V7.1] START BUTTON CLICK"
-);
-
-startGame();
-
-},
-true
-);
-
-
-/* =========================================================
-DOM READY
-========================================================= */
-
-window.addEventListener(
-"DOMContentLoaded",
-() => {
-
-refreshStartElements();
-
-}
-);
-
-
-/* =========================================================
-WINDOW LOAD
-========================================================= */
-
-window.addEventListener(
-"load",
-() => {
-
-refreshStartElements();
-
-console.log(
-"[AMY V7.1] Start button:",
-document.getElementById(
-"startButton"
-)
-);
-
-console.log(
-"[AMY V7.1] Start screen:",
-document.getElementById(
-"startScreen"
-)
-);
-}
-);
-
-
-/* =========================================================
-INITIALIZE
-========================================================= */
 
 function init() {
-
-try {
-
-setupUI();
-
-clock =
-new THREE.Clock();
 
 scene =
 new THREE.Scene();
 
+scene.background =
+new THREE.Color(
+0x68737a
+);
+
+scene.fog =
+new THREE.FogExp2(
+0x68737a,
+.009
+);
+
 camera =
 new THREE.PerspectiveCamera(
-72,
-window.innerWidth /
-window.innerHeight,
-0.05,
-250
+68,
+innerWidth/innerHeight,
+.05,
+500
+);
+
+camera.position.set(
+0,
+PLAYER_HEIGHT,
+28
 );
 
 renderer =
 new THREE.WebGLRenderer({
-antialias: true,
+antialias:true,
 powerPreference:
 "high-performance"
 });
 
 renderer.setPixelRatio(
 Math.min(
-window.devicePixelRatio,
-1.75
+devicePixelRatio,
+1.7
 )
 );
 
 renderer.setSize(
-window.innerWidth,
-window.innerHeight
+innerWidth,
+innerHeight
 );
-
-renderer.shadowMap.enabled =
-true;
-
-renderer.shadowMap.type =
-THREE.PCFSoftShadowMap;
 
 renderer.outputColorSpace =
 THREE.SRGBColorSpace;
@@ -3707,149 +1974,100 @@ renderer.toneMapping =
 THREE.ACESFilmicToneMapping;
 
 renderer.toneMappingExposure =
-1.0;
+1.05;
+
+renderer.shadowMap.enabled =
+true;
+
+renderer.shadowMap.type =
+THREE.PCFSoftShadowMap;
 
 document.body.appendChild(
 renderer.domElement
 );
 
-renderer.domElement.style.position =
-"fixed";
+clock =
+new THREE.Clock();
 
-renderer.domElement.style.inset =
-"0";
-
-renderer.domElement.style.zIndex =
-"0";
-
-renderer.domElement.style.touchAction =
-"none";
-
-createMaterials();
-
-createAtmosphere();
+player = {
+position:
+new THREE.Vector3(
+0,
+PLAYER_HEIGHT,
+28
+),
+flashlight:null,
+flashTarget:null
+};
 
 createLighting();
-
 createGround();
-
-createCity();
-
-createLRTTracks();
-
+createRoad();
+createBuildings();
+createLRT();
 createStation();
-
-createBusTerminal();
-
 createCars();
-
-createStreetLights();
-
-createVegetation();
-
+createTrees();
 createDebris();
-
 createPier();
-
 createWater();
-
-createPlayer();
-
-createFlashlight();
-
-createLRTTrain(
--4.7,
--72,
-1
-);
-
-createLRTTrain(
-4.7,
--94,
--1
-);
-
+createStreetLights();
 createDaniel();
+createFlashlight();
+setupInput();
 
-resize();
+window.addEventListener(
+"resize",
+()=>{
+camera.aspect =
+innerWidth/
+innerHeight;
 
-// 最後再確保開始按鈕可操作
-refreshStartElements();
+camera.updateProjectionMatrix();
 
-console.log(
-"[AMY V7.1] INITIALIZED"
+renderer.setSize(
+innerWidth,
+innerHeight
 );
+}
+);
+
+if(startScreen) {
+
+startScreen.style.zIndex =
+"9999";
+
+startScreen.style.pointerEvents =
+"auto";
+}
+
+if(startButton) {
+
+startButton.style.zIndex =
+"10000";
+
+startButton.style.pointerEvents =
+"auto";
+
+startButton.disabled =
+false;
+}
 
 animate();
-
-} catch (error) {
-
-console.error(
-"[AMY V7.1] INITIALIZATION ERROR:",
-error
-);
-
-// 即使遊戲初始化出錯，
-// 都顯示錯誤，方便定位
-showMessage(
-"遊戲初始化出現問題，請重新整理頁面。",
-10000
-);
-}
 }
 
-
-/* =========================================================
-ANIMATION LOOP
-========================================================= */
-
-function animate() {
-
-requestAnimationFrame(
-animate
-);
-
-if (
-!clock ||
-!renderer ||
-!scene ||
-!camera
+if(
+document.readyState ===
+"loading"
 ) {
-return;
-}
 
-const delta =
-Math.min(
-clock.getDelta(),
-0.05
+document.addEventListener(
+"DOMContentLoaded",
+init,
+{once:true}
 );
 
-const elapsed =
-performance.now();
-
-updatePlayer(
-delta
-);
-
-updateStory();
-
-updateEnvironment(
-elapsed
-);
-
-updateWater(
-elapsed
-);
-
-renderer.render(
-scene,
-camera
-);
-}
-
-
-/* =========================================================
-START
-========================================================= */
+} else {
 
 init();
+}
