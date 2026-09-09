@@ -2,9 +2,15 @@ import * as THREE from
 "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
 
-// ================================
+// ========================================
 // AMY — FIVE YEARS AFTER
-// ================================
+// TUEN MUN PIER
+// ========================================
+
+
+// ========================================
+// BASIC UI
+// ========================================
 
 const startScreen =
 document.getElementById("startScreen");
@@ -13,9 +19,9 @@ const startButton =
 document.getElementById("startButton");
 
 
-// ================================
+// ========================================
 // SCENE
-// ================================
+// ========================================
 
 const scene =
 new THREE.Scene();
@@ -26,14 +32,14 @@ new THREE.Color(0xb8c5c7);
 scene.fog =
 new THREE.Fog(
 0xb8c5c7,
-15,
-100
+18,
+110
 );
 
 
-// ================================
+// ========================================
 // CAMERA
-// ================================
+// ========================================
 
 const camera =
 new THREE.PerspectiveCamera(
@@ -41,19 +47,19 @@ new THREE.PerspectiveCamera(
 window.innerWidth /
 window.innerHeight,
 0.1,
-200
+250
 );
 
 camera.position.set(
 0,
-2,
+1.7,
 8
 );
 
 
-// ================================
+// ========================================
 // RENDERER
-// ================================
+// ========================================
 
 const renderer =
 new THREE.WebGLRenderer({
@@ -96,15 +102,15 @@ renderer.domElement
 );
 
 
-// ================================
-// LIGHTING
-// ================================
+// ========================================
+// LIGHT
+// ========================================
 
 const skyLight =
 new THREE.HemisphereLight(
-0xe6eeee,
-0x505754,
-2.5
+0xe7eeee,
+0x4e5552,
+2.4
 );
 
 scene.add(skyLight);
@@ -113,69 +119,77 @@ scene.add(skyLight);
 const sunlight =
 new THREE.DirectionalLight(
 0xffffff,
-2.5
+2.3
 );
 
 sunlight.position.set(
--20,
-40,
-20
+-25,
+45,
+25
 );
 
 scene.add(sunlight);
 
 
-// ================================
+// ========================================
 // MATERIALS
-// ================================
+// ========================================
 
 const roadMaterial =
 new THREE.MeshStandardMaterial({
-color: 0x4e5554,
-roughness: 0.9
+color: 0x505655,
+roughness: 0.95
 });
 
 
 const concreteMaterial =
 new THREE.MeshStandardMaterial({
-color: 0x777d7b,
-roughness: 0.9
+color: 0x747a77,
+roughness: 0.95
 });
 
 
 const buildingMaterial =
 new THREE.MeshStandardMaterial({
-color: 0x727875,
-roughness: 0.95
+color: 0x707774,
+roughness: 0.9
 });
 
 
 const metalMaterial =
 new THREE.MeshStandardMaterial({
-color: 0x343b3a,
-metalness: 0.5,
-roughness: 0.7
+color: 0x343a39,
+metalness: 0.45,
+roughness: 0.75
 });
 
 
-const vegetationMaterial =
+const greenMaterial =
 new THREE.MeshStandardMaterial({
-color: 0x405544,
+color: 0x405445,
 roughness: 1
 });
 
 
 const waterMaterial =
 new THREE.MeshStandardMaterial({
-color: 0x4f7379,
-roughness: 0.25,
+color: 0x54767b,
+roughness: 0.3,
 metalness: 0.1
 });
 
 
-// ================================
-// BOX FUNCTION
-// ================================
+const railingMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x505654,
+metalness: 0.6,
+roughness: 0.6
+});
+
+
+// ========================================
+// BOX
+// ========================================
 
 function box(
 x,
@@ -212,9 +226,9 @@ return object;
 }
 
 
-// ================================
+// ========================================
 // ROAD
-// ================================
+// ========================================
 
 box(
 0,
@@ -227,9 +241,9 @@ roadMaterial
 );
 
 
-// ================================
+// ========================================
 // SIDEWALKS
-// ================================
+// ========================================
 
 box(
 -15,
@@ -252,9 +266,9 @@ concreteMaterial
 );
 
 
-// ================================
+// ========================================
 // BUILDINGS
-// ================================
+// ========================================
 
 for (
 let i = 0;
@@ -265,6 +279,7 @@ i++
 const z =
 -5 - i * 17;
 
+
 box(
 -22,
 5,
@@ -274,6 +289,7 @@ z,
 13,
 buildingMaterial
 );
+
 
 box(
 22,
@@ -287,11 +303,11 @@ buildingMaterial
 }
 
 
-// ================================
+// ========================================
 // ABANDONED CARS
-// ================================
+// ========================================
 
-function car(
+function createCar(
 x,
 z,
 rotation
@@ -311,6 +327,7 @@ metalMaterial
 body.rotation.y =
 rotation;
 
+
 const roof =
 box(
 x,
@@ -326,23 +343,37 @@ roof.rotation.y =
 rotation;
 }
 
-car(-5, -18, 0.1);
 
-car(6, -38, -0.25);
+createCar(
+-5,
+-18,
+0.1
+);
 
-car(-4, -63, 0.15);
+createCar(
+6,
+-38,
+-0.25
+);
+
+createCar(
+-4,
+-63,
+0.15
+);
 
 
-// ================================
-// LIGHT RAIL TRACK
-// ================================
+// ========================================
+// LIGHT RAIL
+// ========================================
 
 const railMaterial =
 new THREE.MeshStandardMaterial({
 color: 0x292e2d,
-metalness: 0.7,
+metalness: 0.75,
 roughness: 0.5
 });
+
 
 box(
 -8,
@@ -353,6 +384,7 @@ box(
 105,
 railMaterial
 );
+
 
 box(
 -6,
@@ -365,9 +397,12 @@ railMaterial
 );
 
 
-// ================================
+// ========================================
 // VEGETATION
-// ================================
+// ========================================
+
+const trees = [];
+
 
 for (
 let i = 0;
@@ -380,12 +415,15 @@ Math.random() > 0.5
 ? 1
 : -1;
 
+
 const x =
 side *
 (12 + Math.random() * 8);
 
+
 const z =
 -Math.random() * 100;
+
 
 const trunk =
 new THREE.Mesh(
@@ -395,14 +433,16 @@ new THREE.CylinderGeometry(
 3,
 8
 ),
-vegetationMaterial
+greenMaterial
 );
+
 
 trunk.position.set(
 x,
 1.5,
 z
 );
+
 
 scene.add(trunk);
 
@@ -414,8 +454,9 @@ new THREE.SphereGeometry(
 8,
 8
 ),
-vegetationMaterial
+greenMaterial
 );
+
 
 leaves.position.set(
 x,
@@ -423,13 +464,24 @@ x,
 z
 );
 
+
 scene.add(leaves);
+
+
+trees.push({
+trunk,
+leaves,
+phase:
+Math.random() *
+Math.PI *
+2
+});
 }
 
 
-// ================================
+// ========================================
 // SEA
-// ================================
+// ========================================
 
 const sea =
 new THREE.Mesh(
@@ -440,8 +492,10 @@ new THREE.PlaneGeometry(
 waterMaterial
 );
 
+
 sea.rotation.x =
 -Math.PI / 2;
+
 
 sea.position.set(
 0,
@@ -449,21 +503,13 @@ sea.position.set(
 -105
 );
 
+
 scene.add(sea);
 
-// =====================================
-// TUEN MUN PIER - WATERFRONT V2
-// =====================================
 
-// -------------------------------
-// 碼頭地面
-// -------------------------------
-
-const pierMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x777a76,
-roughness: 0.85
-});
+// ========================================
+// PIER
+// ========================================
 
 box(
 0,
@@ -472,38 +518,44 @@ box(
 24,
 0.25,
 20,
-pierMaterial
+concreteMaterial
 );
 
-// -------------------------------
-// 海旁欄杆
-// -------------------------------
 
-const railingMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x555b59,
-metalness: 0.6,
-roughness: 0.6
-});
+// ========================================
+// PIER EDGE
+// ========================================
 
-function railing(
+box(
+0,
+0.25,
+-103,
+24,
+0.5,
+0.5,
+metalMaterial
+);
+
+
+// ========================================
+// RAILING
+// ========================================
+
+function createRailing(
 x,
 z
 ) {
 
-// 垂直柱
-
 box(
 x,
-1.0,
+1,
 z,
 0.12,
 2,
-0.12,
+4,
 railingMaterial
 );
 
-// 上橫杆
 
 box(
 x,
@@ -515,11 +567,10 @@ z,
 railingMaterial
 );
 
-// 中間橫杆
 
 box(
 x,
-1.0,
+1,
 z,
 0.08,
 0.08,
@@ -528,52 +579,165 @@ railingMaterial
 );
 }
 
+
 for (
 let i = 0;
 i < 7;
 i++
 ) {
 
-railing(
+createRailing(
 -11,
 -82 - i * 3
 );
 
-railing(
+
+createRailing(
 11,
 -82 - i * 3
 );
 }
 
-// -------------------------------
-// 碼頭邊緣
-// -------------------------------
 
-const pierEdgeMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x454b49,
-roughness: 0.8
-});
+// ========================================
+// PIER LIGHTS
+// ========================================
+
+function createPierLight(
+x,
+z
+) {
 
 box(
-0,
-0.25,
--103,
-24,
-0.5,
-0.5,
-pierEdgeMaterial
+x,
+3,
+z,
+0.15,
+6,
+0.15,
+metalMaterial
 );
 
-// -------------------------------
-// 海面浮標
-// -------------------------------
+
+const lamp =
+new THREE.PointLight(
+0xffedc7,
+1.2,
+15
+);
+
+
+lamp.position.set(
+x,
+6,
+z
+);
+
+
+scene.add(lamp);
+}
+
+
+createPierLight(
+-9,
+-78
+);
+
+createPierLight(
+9,
+-90
+);
+
+createPierLight(
+-9,
+-102
+);
+
+createPierLight(
+9,
+-106
+);
+
+
+// ========================================
+// STREET SIGN
+// ========================================
+
+box(
+-5,
+2.3,
+-74,
+0.12,
+4.6,
+0.12,
+metalMaterial
+);
+
+
+box(
+-5,
+4.3,
+-74,
+3,
+0.7,
+0.12,
+metalMaterial
+);
+
+
+// ========================================
+// BINS
+// ========================================
+
+function createBin(
+x,
+z
+) {
+
+const bin =
+new THREE.Mesh(
+new THREE.CylinderGeometry(
+0.45,
+0.4,
+1,
+12
+),
+metalMaterial
+);
+
+
+bin.position.set(
+x,
+0.5,
+z
+);
+
+
+scene.add(bin);
+}
+
+
+createBin(
+5,
+-76
+);
+
+createBin(
+-6,
+-94
+);
+
+
+// ========================================
+// BUOYS
+// ========================================
 
 const buoyMaterial =
 new THREE.MeshStandardMaterial({
-color: 0x8b7560,
+color: 0x806c5c,
 roughness: 0.7
 });
+
 
 function createBuoy(
 x,
@@ -590,14 +754,17 @@ new THREE.SphereGeometry(
 buoyMaterial
 );
 
+
 buoy.position.set(
 x,
 0.1,
 z
 );
 
+
 scene.add(buoy);
 }
+
 
 createBuoy(
 -8,
@@ -614,204 +781,23 @@ createBuoy(
 -116
 );
 
-// -------------------------------
-// 碼頭路燈
-// -------------------------------
 
-const lampPoleMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x3d4442,
-metalness: 0.5,
-roughness: 0.6
-});
-
-function pierLamp(
-x,
-z
-) {
-
-box(
-x,
-3,
-z,
-0.15,
-6,
-0.15,
-lampPoleMaterial
-);
-
-const lamp =
-new THREE.PointLight(
-0xffefd0,
-1.2,
-14
-);
-
-lamp.position.set(
-x,
-6,
-z
-);
-
-scene.add(lamp);
-}
-
-pierLamp(
--9,
--78
-);
-
-pierLamp(
-9,
--90
-);
-
-pierLamp(
--9,
--102
-);
-
-pierLamp(
-9,
--106
-);
-
-// -------------------------------
-// 香港式路牌
-// -------------------------------
-
-const signMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x444947,
-roughness: 0.8
-});
-
-function createStreetSign(
-x,
-z
-) {
-
-box(
-x,
-2.3,
-z,
-0.12,
-4.6,
-0.12,
-signMaterial
-);
-
-box(
-x,
-4.3,
-z,
-2.6,
-0.65,
-0.12,
-signMaterial
-);
-}
-
-createStreetSign(
--5,
--74
-);
-
-// -------------------------------
-// 廢棄垃圾桶
-// -------------------------------
-
-const binMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x414746,
-roughness: 0.9
-});
-
-function createBin(
-x,
-z
-) {
-
-const bin =
-new THREE.Mesh(
-new THREE.CylinderGeometry(
-0.45,
-0.4,
-1,
-12
-),
-binMaterial
-);
-
-bin.position.set(
-x,
-0.5,
-z
-);
-
-scene.add(bin);
-}
-
-createBin(
-5,
--76
-);
-
-createBin(
--6,
--94
-);
-
-// -------------------------------
-// 海旁雜物
-// -------------------------------
-
-for (
-let i = 0;
-i < 18;
-i++
-) {
-
-const object =
-box(
-(Math.random() - 0.5) * 20,
-0.25,
--75 - Math.random() * 30,
-0.3 + Math.random() * 0.5,
-0.3 + Math.random() * 0.3,
-0.3 + Math.random() * 0.6,
-metalMaterial
-);
-
-object.rotation.y =
-Math.random() * Math.PI;
-}
-
-// =====================================
-// TUEN MUN PIER - ATMOSPHERE V2.2
-// =====================================
-
-// -------------------------------
-// 海面動畫
-// -------------------------------
-
-const waterBaseY = sea.position.y;
-
-let waterTime = 0;
-
-// -------------------------------
-// 空氣粒子
-// -------------------------------
+// ========================================
+// ATMOSPHERIC PARTICLES
+// ========================================
 
 const particleGeometry =
 new THREE.BufferGeometry();
 
-const particleCount = 700;
+
+const particleCount = 500;
+
 
 const particlePositions =
 new Float32Array(
 particleCount * 3
 );
+
 
 for (
 let i = 0;
@@ -819,15 +805,24 @@ i < particleCount;
 i++
 ) {
 
-particlePositions[i * 3] =
+particlePositions[
+i * 3
+] =
 (Math.random() - 0.5) * 45;
 
-particlePositions[i * 3 + 1] =
+
+particlePositions[
+i * 3 + 1
+] =
 Math.random() * 10;
 
-particlePositions[i * 3 + 2] =
+
+particlePositions[
+i * 3 + 2
+] =
 -Math.random() * 110;
 }
+
 
 particleGeometry.setAttribute(
 "position",
@@ -837,13 +832,15 @@ particlePositions,
 )
 );
 
+
 const particleMaterial =
 new THREE.PointsMaterial({
-color: 0xdfe7e5,
-size: 0.08,
+color: 0xe1e8e6,
+size: 0.07,
 transparent: true,
-opacity: 0.28
+opacity: 0.3
 });
+
 
 const particles =
 new THREE.Points(
@@ -851,244 +848,15 @@ particleGeometry,
 particleMaterial
 );
 
-scene.add(particles);
 
-// -------------------------------
-// 遠處霧層
-// -------------------------------
-
-const mistMaterial =
-new THREE.MeshBasicMaterial({
-color: 0xd5dddd,
-transparent: true,
-opacity: 0.10,
-depthWrite: false
-});
-
-for (
-let i = 0;
-i < 7;
-i++
-) {
-
-const mist =
-new THREE.Mesh(
-new THREE.PlaneGeometry(
-30,
-8
-),
-mistMaterial
-);
-
-mist.position.set(
-(Math.random() - 0.5) * 25,
-2 + Math.random() * 3,
--35 - i * 12
-);
-
-mist.rotation.y =
-Math.PI;
-
-scene.add(mist);
-}
-
-// -------------------------------
-// 廢棄警示燈
-// -------------------------------
-
-const warningMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x2d3231,
-roughness: 0.8
-});
-
-function warningLight(
-x,
-z
-) {
-
-box(
-x,
-2.2,
-z,
-0.15,
-4.4,
-0.15,
-warningMaterial
-);
-
-const light =
-new THREE.PointLight(
-0xb66f55,
-0.7,
-9
-);
-
-light.position.set(
-x,
-4.4,
-z
-);
-
-scene.add(light);
-}
-
-warningLight(
--10,
--84
-);
-
-warningLight(
-10,
--96
-);
-
-// -------------------------------
-// 海邊混凝土柱
-// -------------------------------
-
-const seawallMaterial =
-new THREE.MeshStandardMaterial({
-color: 0x686d6a,
-roughness: 0.95
-});
-
-for (
-let i = 0;
-i < 8;
-i++
-) {
-
-box(
--10.5,
-0.7,
--80 - i * 3,
-0.5,
-1.4,
-0.5,
-seawallMaterial
-);
-
-box(
-10.5,
-0.7,
--80 - i * 3,
-0.5,
-1.4,
-0.5,
-seawallMaterial
-);
-}
-
-// -------------------------------
-// 風中漂浮垃圾
-// -------------------------------
-
-const floatingObjects = [];
-
-for (
-let i = 0;
-i < 20;
-i++
-) {
-
-const piece =
-box(
-(Math.random() - 0.5) * 24,
-0.4 + Math.random() * 2,
--20 - Math.random() * 85,
-0.12,
-0.12,
-0.4,
-metalMaterial
-);
-
-floatingObjects.push({
-object: piece,
-speed:
-0.3 +
-Math.random() * 0.6,
-offset:
-Math.random() * Math.PI * 2
-});
-}
-
-// ================================
-// STORY UI
-// ================================
-
-const text =
-document.createElement("div");
-
-text.style.position =
-"fixed";
-
-text.style.bottom =
-"130px";
-
-text.style.left =
-"0";
-
-text.style.width =
-"100%";
-
-text.style.textAlign =
-"center";
-
-text.style.color =
-"white";
-
-text.style.fontSize =
-"18px";
-
-text.style.textShadow =
-"0 2px 8px black";
-
-text.style.zIndex =
-"20";
-
-text.style.pointerEvents =
-"none";
-
-document.body.appendChild(
-text
+scene.add(
+particles
 );
 
 
-const mission =
-document.createElement("div");
-
-mission.style.position =
-"fixed";
-
-mission.style.top =
-"20px";
-
-mission.style.left =
-"20px";
-
-mission.style.padding =
-"10px 15px";
-
-mission.style.background =
-"rgba(0,0,0,.35)";
-
-mission.style.color =
-"white";
-
-mission.style.zIndex =
-"20";
-
-mission.innerText =
-"目標：探索屯門碼頭";
-
-document.body.appendChild(
-mission
-);
-
-// ================================
-// GAME START
-// ================================
+// ========================================
+// GAME VARIABLES
+// ========================================
 
 let started = false;
 
@@ -1098,6 +866,412 @@ let radioFound = false;
 
 let danielFound = false;
 
+let endingStarted = false;
+
+
+// ========================================
+// PLAYER CONTROL
+// ========================================
+
+let yaw = 0;
+
+let pitch = 0;
+
+
+const keys = {
+
+w: false,
+s: false,
+a: false,
+d: false
+};
+
+
+// ========================================
+// KEYBOARD
+// ========================================
+
+window.addEventListener(
+"keydown",
+function(event) {
+
+if (
+event.code === "KeyW"
+)
+keys.w = true;
+
+
+if (
+event.code === "KeyS"
+)
+keys.s = true;
+
+
+if (
+event.code === "KeyA"
+)
+keys.a = true;
+
+
+if (
+event.code === "KeyD"
+)
+keys.d = true;
+}
+);
+
+
+window.addEventListener(
+"keyup",
+function(event) {
+
+if (
+event.code === "KeyW"
+)
+keys.w = false;
+
+
+if (
+event.code === "KeyS"
+)
+keys.s = false;
+
+
+if (
+event.code === "KeyA"
+)
+keys.a = false;
+
+
+if (
+event.code === "KeyD"
+)
+keys.d = false;
+}
+);
+
+
+// ========================================
+// MOUSE LOOK
+// ========================================
+
+let mouseLooking = false;
+
+let mouseX = null;
+
+let mouseY = null;
+
+
+window.addEventListener(
+"mousedown",
+function(event) {
+
+if (
+event.button === 0
+) {
+
+mouseLooking = true;
+
+mouseX =
+event.clientX;
+
+mouseY =
+event.clientY;
+}
+}
+);
+
+
+window.addEventListener(
+"mouseup",
+function() {
+
+mouseLooking = false;
+
+mouseX = null;
+
+mouseY = null;
+}
+);
+
+
+window.addEventListener(
+"mousemove",
+function(event) {
+
+if (
+!mouseLooking
+)
+return;
+
+
+const dx =
+event.clientX -
+mouseX;
+
+
+const dy =
+event.clientY -
+mouseY;
+
+
+yaw -=
+dx * 0.004;
+
+
+pitch -=
+dy * 0.003;
+
+
+pitch =
+Math.max(
+-1.1,
+Math.min(
+1.1,
+pitch
+)
+);
+
+
+mouseX =
+event.clientX;
+
+mouseY =
+event.clientY;
+}
+);
+
+
+// ========================================
+// MOBILE
+// ========================================
+
+let mobileForward = false;
+
+let touchLookX = null;
+
+let touchLookY = null;
+
+
+window.addEventListener(
+"touchstart",
+function(event) {
+
+if (
+event.touches.length !== 1
+)
+return;
+
+
+const touch =
+event.touches[0];
+
+
+if (
+touch.clientX < 150
+) {
+
+mobileForward = true;
+
+} else {
+
+touchLookX =
+touch.clientX;
+
+touchLookY =
+touch.clientY;
+}
+}
+);
+
+
+window.addEventListener(
+"touchmove",
+function(event) {
+
+if (
+event.touches.length !== 1
+)
+return;
+
+
+const touch =
+event.touches[0];
+
+
+if (
+touch.clientX < 150
+)
+return;
+
+
+if (
+touchLookX !== null
+) {
+
+const dx =
+touch.clientX -
+touchLookX;
+
+
+const dy =
+touch.clientY -
+touchLookY;
+
+
+yaw -=
+dx * 0.004;
+
+
+pitch -=
+dy * 0.003;
+
+
+pitch =
+Math.max(
+-1.1,
+Math.min(
+1.1,
+pitch
+)
+);
+}
+
+
+touchLookX =
+touch.clientX;
+
+
+touchLookY =
+touch.clientY;
+}
+);
+
+
+window.addEventListener(
+"touchend",
+function() {
+
+mobileForward = false;
+
+touchLookX = null;
+
+touchLookY = null;
+}
+);
+
+
+// ========================================
+// STORY TEXT
+// ========================================
+
+const storyText =
+document.createElement("div");
+
+
+storyText.style.position =
+"fixed";
+
+storyText.style.left =
+"0";
+
+storyText.style.bottom =
+"120px";
+
+storyText.style.width =
+"100%";
+
+storyText.style.textAlign =
+"center";
+
+storyText.style.color =
+"white";
+
+storyText.style.fontSize =
+"18px";
+
+storyText.style.textShadow =
+"0 2px 8px black";
+
+storyText.style.zIndex =
+"30";
+
+storyText.style.pointerEvents =
+"none";
+
+
+document.body.appendChild(
+storyText
+);
+
+
+// ========================================
+// OBJECTIVE
+// ========================================
+
+const objective =
+document.createElement("div");
+
+
+objective.style.position =
+"fixed";
+
+objective.style.top =
+"20px";
+
+objective.style.left =
+"20px";
+
+objective.style.padding =
+"10px 15px";
+
+objective.style.background =
+"rgba(0,0,0,.35)";
+
+objective.style.color =
+"white";
+
+objective.style.zIndex =
+"30";
+
+
+objective.innerText =
+"目標：探索屯門碼頭";
+
+
+document.body.appendChild(
+objective
+);
+
+
+// ========================================
+// SAY
+// ========================================
+
+function say(
+text,
+duration = 4000
+) {
+
+storyText.innerText =
+text;
+
+
+setTimeout(
+function() {
+
+storyText.innerText =
+"";
+
+},
+duration
+);
+}
+
+
+// ========================================
+// START GAME
+// ========================================
 
 startButton.addEventListener(
 "click",
@@ -1108,272 +1282,25 @@ started = true;
 startScreen.style.display =
 "none";
 
-text.innerText =
-"Amy：五年了……我終於回到屯門碼頭。";
 
-setTimeout(
-function() {
-
-text.innerText =
-"";
-
-},
-4000
+say(
+"Amy：五年了……我終於回到屯門碼頭。"
 );
+
+
+objective.innerText =
+"目標：探索屯門碼頭";
 }
 );
 
 
-// ================================
-// PLAYER
-// ================================
-
-let yaw = 0;
-
-let pitch = 0;
-
-const keys = {
-
-w: false,
-s: false,
-a: false,
-d: false
-
-};
-
-
-// ================================
-// KEYBOARD
-// ================================
-
-window.addEventListener(
-"keydown",
-function(e) {
-
-if (e.code === "KeyW")
-keys.w = true;
-
-if (e.code === "KeyS")
-keys.s = true;
-
-if (e.code === "KeyA")
-keys.a = true;
-
-if (e.code === "KeyD")
-keys.d = true;
-}
-);
-
-
-window.addEventListener(
-"keyup",
-function(e) {
-
-if (e.code === "KeyW")
-keys.w = false;
-
-if (e.code === "KeyS")
-keys.s = false;
-
-if (e.code === "KeyA")
-keys.a = false;
-
-if (e.code === "KeyD")
-keys.d = false;
-}
-);
-
-
-// ================================
-// CAMERA LOOK
-// 電腦：滑鼠
-// 手機：手指
-// ================================
-
-let lastX = null;
-let lastY = null;
-
-let mouseLooking = false;
-
-// -------------------------------
-// 電腦滑鼠按住左鍵轉視角
-// -------------------------------
-
-window.addEventListener(
-"mousedown",
-function(e) {
-
-if (e.button === 0) {
-
-mouseLooking = true;
-
-lastX = e.clientX;
-lastY = e.clientY;
-}
-}
-);
-
-window.addEventListener(
-"mouseup",
-function() {
-
-mouseLooking = false;
-
-lastX = null;
-lastY = null;
-}
-);
-
-window.addEventListener(
-"mousemove",
-function(e) {
-
-if (!mouseLooking)
-return;
-
-const dx =
-e.clientX - lastX;
-
-const dy =
-e.clientY - lastY;
-
-
-yaw -=
-dx * 0.004;
-
-pitch -=
-dy * 0.003;
-
-pitch =
-Math.max(
--1.1,
-Math.min(
-1.1,
-pitch
-)
-);
-
-lastX =
-e.clientX;
-
-lastY =
-e.clientY;
-}
-);
-
-// -------------------------------
-// 手機手指轉視角
-// -------------------------------
-
-window.addEventListener(
-"touchmove",
-function(e) {
-
-if (
-e.touches.length !== 1
-)
-return;
-
-const touch =
-e.touches[0];
-
-// 左邊保留畀移動控制
-if (
-touch.clientX < 140
-)
-return;
-
-if (
-lastX !== null
-) {
-
-const dx =
-touch.clientX -
-lastX;
-
-const dy =
-touch.clientY -
-lastY;
-
-yaw -=
-dx * 0.004;
-
-pitch -=
-dy * 0.003;
-
-pitch =
-Math.max(
--1.1,
-Math.min(
-1.1,
-pitch
-)
-);
-}
-
-lastX =
-touch.clientX;
-
-lastY =
-touch.clientY;
-},
-{
-passive: true
-}
-);
-
-window.addEventListener(
-"touchend",
-function() {
-
-lastX = null;
-
-lastY = null;
-}
-);
-
-// ================================
-// SIMPLE MOBILE MOVE
-// ================================
-
-let moveForward = false;
-
-let moveBackward = false;
-
-
-window.addEventListener(
-"touchstart",
-function(e) {
-
-const touch =
-e.touches[0];
-
-if (
-touch.clientX < 140
-) {
-
-moveForward = true;
-}
-}
-);
-
-
-window.addEventListener(
-"touchend",
-function() {
-
-moveForward = false;
-
-moveBackward = false;
-}
-);
-
-
-// ================================
+// ========================================
 // MOVEMENT
-// ================================
+// ========================================
 
-function move(delta) {
+function movePlayer(
+delta
+) {
 
 if (!started)
 return;
@@ -1387,17 +1314,20 @@ let sideways = 0;
 if (keys.w)
 forward += 1;
 
+
 if (keys.s)
 forward -= 1;
 
+
 if (keys.a)
 sideways -= 1;
+
 
 if (keys.d)
 sideways += 1;
 
 
-if (moveForward)
+if (mobileForward)
 forward += 1;
 
 
@@ -1415,12 +1345,19 @@ sideways,
 -forward
 );
 
+
 direction.normalize();
 
+
 direction.applyAxisAngle(
-new THREE.Vector3(0,1,0),
+new THREE.Vector3(
+0,
+1,
+0
+),
 yaw
 );
+
 
 camera.position.add(
 direction.multiplyScalar(
@@ -1450,11 +1387,30 @@ camera.position.z
 }
 
 
-// ================================
-// STORY
-// ================================
+// ========================================
+// CAMERA
+// ========================================
 
-function storyCheck() {
+function updateCamera() {
+
+camera.rotation.order =
+"YXZ";
+
+
+camera.rotation.y =
+yaw;
+
+
+camera.rotation.x =
+pitch;
+}
+
+
+// ========================================
+// STORY
+// ========================================
+
+function checkStory() {
 
 if (!started)
 return;
@@ -1472,18 +1428,22 @@ z < -45 &&
 
 radioFound = true;
 
-mission.innerText =
+
+objective.innerText =
 "目標：調查神秘收音機";
 
-text.innerText =
-"收音機：……Amy……你聽得到嗎？";
+
+say(
+"收音機：……Amy……你聽得到嗎？"
+);
 
 
 setTimeout(
 function() {
 
-text.innerText =
-"收音機：去碼頭下面……Daniel 喺等你。";
+say(
+"收音機：去碼頭下面……Daniel 喺等你。"
+);
 
 },
 3500
@@ -1498,11 +1458,14 @@ z < -80
 
 chapter = 2;
 
-mission.innerText =
+
+objective.innerText =
 "CHAPTER 2：地下避難所";
 
-text.innerText =
-"Amy：Daniel……你仲生存緊？";
+
+say(
+"Amy：Daniel……你仲生存緊？"
+);
 }
 
 
@@ -1514,18 +1477,22 @@ z < -110 &&
 
 danielFound = true;
 
-mission.innerText =
+
+objective.innerText =
 "找到 Daniel";
 
-text.innerText =
-"Daniel：Amy……";
+
+say(
+"Daniel：Amy……"
+);
 
 
 setTimeout(
 function() {
 
-text.innerText =
-"Amy：Daniel……真係你？";
+say(
+"Amy：Daniel……真係你？"
+);
 
 },
 3500
@@ -1533,34 +1500,44 @@ text.innerText =
 
 
 setTimeout(
-ending,
+startEnding,
 7500
 );
 }
 }
 
 
-// ================================
+// ========================================
 // ENDING
-// ================================
+// ========================================
 
-function ending() {
+function startEnding() {
+
+if (endingStarted)
+return;
+
+
+endingStarted = true;
+
 
 chapter = 3;
 
-mission.innerText =
+
+objective.innerText =
 "CHAPTER 3：A NEW BEGINNING";
 
 
-text.innerText =
-"五年後……";
+say(
+"五年後……"
+);
 
 
 setTimeout(
 function() {
 
-text.innerText =
-"Amy 同 Daniel 開始喺海邊建立新嘅生存區。";
+say(
+"Amy 同 Daniel 開始喺海邊建立新嘅生存區。"
+);
 
 },
 4000
@@ -1570,8 +1547,9 @@ text.innerText =
 setTimeout(
 function() {
 
-text.innerText =
-"由兩個人，到一個社區。";
+say(
+"由兩個人，到一個社區。"
+);
 
 },
 8000
@@ -1581,8 +1559,9 @@ text.innerText =
 setTimeout(
 function() {
 
-text.innerText =
-"由生存，到生活。";
+say(
+"由生存，到生活。"
+);
 
 },
 12000
@@ -1592,8 +1571,9 @@ text.innerText =
 setTimeout(
 function() {
 
-text.innerText =
-"Year 10";
+say(
+"Year 10"
+);
 
 },
 16000
@@ -1603,8 +1583,9 @@ text.innerText =
 setTimeout(
 function() {
 
-text.innerText =
-"Amy 同 Daniel 結婚，並育有孩子。";
+say(
+"Amy 同 Daniel 結婚，並育有孩子。"
+);
 
 },
 20000
@@ -1614,8 +1595,9 @@ text.innerText =
 setTimeout(
 function() {
 
-text.innerText =
-"佢哋嘅孩子，喺海邊嘅新世界長大。";
+say(
+"佢哋嘅孩子，喺海邊嘅新世界長大。"
+);
 
 },
 24000
@@ -1625,8 +1607,9 @@ text.innerText =
 setTimeout(
 function() {
 
-text.innerText =
-"世界曾經毀滅……但人類重新開始。";
+say(
+"世界曾經毀滅……但人類重新開始。"
+);
 
 },
 28000
@@ -1636,10 +1619,11 @@ text.innerText =
 setTimeout(
 function() {
 
-text.innerText =
+storyText.innerText =
 "THE WORLD ENDED. WE BEGAN AGAIN.";
 
-text.style.fontSize =
+
+storyText.style.fontSize =
 "26px";
 
 },
@@ -1648,76 +1632,30 @@ text.style.fontSize =
 }
 
 
-// ================================
-// CAMERA
-// ================================
+// ========================================
+// ENVIRONMENT ANIMATION
+// ========================================
 
-function updateCamera() {
+let waterTime = 0;
 
-camera.rotation.order =
-"YXZ";
+const waterBaseY =
+sea.position.y;
 
-camera.rotation.y =
-yaw;
-
-camera.rotation.x =
-pitch;
-}
-
-
-// ================================
-// GAME LOOP
-// ================================
 
 let previous =
 performance.now();
 
 
-function gameLoop() {
+function animate() {
 
 requestAnimationFrame(
-gameLoop
+animate
 );
 
-// -------------------------------
-// 環境動畫
-// -------------------------------
-
-waterTime += delta;
-
-sea.position.y =
-waterBaseY +
-Math.sin(waterTime * 0.8) *
-0.025;
-
-// 空氣粒子慢慢移動
-
-particles.rotation.y +=
-delta * 0.008;
-
-// 漂浮物隨風移動
-
-for (
-const item of floatingObjects
-) {
-
-item.object.position.x +=
-item.speed * delta;
-
-item.object.rotation.y +=
-delta * 0.5;
-
-if (
-item.object.position.x > 14
-) {
-
-item.object.position.x =
--14;
-}
-}
 
 const now =
 performance.now();
+
 
 const delta =
 Math.min(
@@ -1730,11 +1668,48 @@ previous =
 now;
 
 
-move(delta);
+movePlayer(
+delta
+);
+
 
 updateCamera();
 
-storyCheck();
+
+checkStory();
+
+
+// 海面輕微上下
+
+waterTime +=
+delta;
+
+
+sea.position.y =
+waterBaseY +
+Math.sin(
+waterTime * 0.8
+) * 0.025;
+
+
+// 空氣粒子
+
+particles.rotation.y +=
+delta * 0.006;
+
+
+// 植物微微擺動
+
+for (
+const tree of trees
+) {
+
+tree.leaves.rotation.z =
+Math.sin(
+waterTime * 0.7 +
+tree.phase
+) * 0.025;
+}
 
 
 renderer.render(
@@ -1744,12 +1719,9 @@ camera
 }
 
 
-gameLoop();
-
-
-// ================================
+// ========================================
 // RESIZE
-// ================================
+// ========================================
 
 window.addEventListener(
 "resize",
@@ -1759,7 +1731,9 @@ camera.aspect =
 window.innerWidth /
 window.innerHeight;
 
+
 camera.updateProjectionMatrix();
+
 
 renderer.setSize(
 window.innerWidth,
@@ -1767,3 +1741,10 @@ window.innerHeight
 );
 }
 );
+
+
+// ========================================
+// START ENGINE
+// ========================================
+
+animate();
