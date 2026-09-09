@@ -1530,6 +1530,415 @@ createLampHead(
 -106
 );
 
+// ================================
+// V4.1 VISIBILITY FIX
+// ================================
+
+// ---------- Road-facing windows ----------
+function addV4FixWindows(x, z, side) {
+
+const windowMat = new THREE.MeshStandardMaterial({
+color: 0x8fa0aa,
+roughness: 0.65,
+metalness: 0.05
+});
+
+const frameMat = new THREE.MeshStandardMaterial({
+color: 0x30383c,
+roughness: 0.8
+});
+
+for (let row = 0; row < 3; row++) {
+
+for (let col = 0; col < 4; col++) {
+
+const y = 2.5 + row * 2.2;
+const zPos = z - 4.2 + col * 2.8;
+
+const window = box(
+0.10,
+1.35,
+1.65,
+windowMat
+);
+
+window.position.set(
+side === "left" ? x + 0.05 : x - 0.05,
+y,
+zPos
+);
+
+scene.add(window);
+
+// window frame vertical
+const frame = box(
+0.12,
+1.5,
+0.08,
+frameMat
+);
+
+frame.position.set(
+side === "left" ? x + 0.10 : x - 0.10,
+y,
+zPos
+);
+
+scene.add(frame);
+}
+}
+}
+
+
+// ---------- Large Tuen Mun Pier sign ----------
+const v4fixSignCanvas = document.createElement("canvas");
+v4fixSignCanvas.width = 1024;
+v4fixSignCanvas.height = 256;
+
+const v4fixCtx = v4fixSignCanvas.getContext("2d");
+
+v4fixCtx.fillStyle = "#25343b";
+v4fixCtx.fillRect(0, 0, 1024, 256);
+
+v4fixCtx.strokeStyle = "#d7e0df";
+v4fixCtx.lineWidth = 12;
+v4fixCtx.strokeRect(8, 8, 1008, 240);
+
+v4fixCtx.fillStyle = "#ffffff";
+v4fixCtx.font = "bold 88px Arial";
+v4fixCtx.textAlign = "center";
+v4fixCtx.textBaseline = "middle";
+
+v4fixCtx.fillText(
+"屯門碼頭",
+512,
+105
+);
+
+v4fixCtx.font = "bold 42px Arial";
+
+v4fixCtx.fillText(
+"TUEN MUN PIER",
+512,
+175
+);
+
+const v4fixSignTexture =
+new THREE.CanvasTexture(v4fixSignCanvas);
+
+const v4fixSignMaterial =
+new THREE.MeshStandardMaterial({
+map: v4fixSignTexture,
+roughness: 0.7,
+metalness: 0.05
+});
+
+const v4fixSign = new THREE.Mesh(
+new THREE.BoxGeometry(9, 2.25, 0.18),
+v4fixSignMaterial
+);
+
+v4fixSign.position.set(
+0,
+5.0,
+-52
+);
+
+scene.add(v4fixSign);
+
+
+// ---------- Sign supports ----------
+const v4fixSupportMat =
+new THREE.MeshStandardMaterial({
+color: 0x42494b,
+roughness: 0.85,
+metalness: 0.25
+});
+
+for (const x of [-3.4, 3.4]) {
+
+const support = box(
+0.28,
+5.0,
+0.28,
+v4fixSupportMat
+);
+
+support.position.set(
+x,
+2.5,
+-52
+);
+
+scene.add(support);
+}
+
+
+// ---------- Large shipping containers ----------
+const v4fixContainerRed =
+new THREE.MeshStandardMaterial({
+color: 0x6e4038,
+roughness: 0.9,
+metalness: 0.15
+});
+
+const v4fixContainerBlue =
+new THREE.MeshStandardMaterial({
+color: 0x465c64,
+roughness: 0.9,
+metalness: 0.15
+});
+
+const v4fixContainer1 = box(
+5.5,
+2.7,
+2.4,
+v4fixContainerRed
+);
+
+v4fixContainer1.position.set(
+-7.0,
+1.35,
+-62
+);
+
+scene.add(v4fixContainer1);
+
+
+const v4fixContainer2 = box(
+5.5,
+2.7,
+2.4,
+v4fixContainerBlue
+);
+
+v4fixContainer2.position.set(
+7.0,
+1.35,
+-66
+);
+
+scene.add(v4fixContainer2);
+
+
+// ---------- Container vertical lines ----------
+const v4fixContainerLineMat =
+new THREE.MeshStandardMaterial({
+color: 0x242a2c,
+roughness: 0.9
+});
+
+for (const x of [-9.0, -7.0, -5.0, 5.0, 7.0, 9.0]) {
+
+const line = box(
+0.08,
+2.5,
+0.08,
+v4fixContainerLineMat
+);
+
+line.position.set(
+x,
+1.35,
+-60.75
+);
+
+scene.add(line);
+}
+
+
+// ---------- Large abandoned tyres ----------
+const v4fixTyreMat =
+new THREE.MeshStandardMaterial({
+color: 0x17191a,
+roughness: 1.0
+});
+
+function addV4FixTyre(x, z) {
+
+const tyre = new THREE.Mesh(
+new THREE.TorusGeometry(
+0.72,
+0.24,
+12,
+24
+),
+v4fixTyreMat
+);
+
+tyre.rotation.x = Math.PI / 2;
+
+tyre.position.set(
+x,
+0.72,
+z
+);
+
+scene.add(tyre);
+}
+
+addV4FixTyre(-4.5, -57);
+addV4FixTyre(4.5, -58);
+addV4FixTyre(-5.5, -69);
+
+
+// ---------- Pier safety railings ----------
+const v4fixRailMat =
+new THREE.MeshStandardMaterial({
+color: 0x667073,
+roughness: 0.75,
+metalness: 0.45
+});
+
+for (const x of [-10.5, 10.5]) {
+
+for (let i = 0; i < 7; i++) {
+
+const post = box(
+0.12,
+1.25,
+0.12,
+v4fixRailMat
+);
+
+post.position.set(
+x,
+0.65,
+-50 - i * 3
+);
+
+scene.add(post);
+}
+
+const rail = box(
+0.16,
+0.16,
+21,
+v4fixRailMat
+);
+
+rail.position.set(
+x,
+1.15,
+-59
+);
+
+scene.add(rail);
+}
+
+
+// ---------- Road lane markings ----------
+const v4fixRoadMarkMat =
+new THREE.MeshStandardMaterial({
+color: 0xd8d5c8,
+roughness: 0.8
+});
+
+for (let i = 0; i < 12; i++) {
+
+const mark = box(
+0.22,
+0.025,
+2.0,
+v4fixRoadMarkMat
+);
+
+mark.position.set(
+0,
+0.03,
+-30 - i * 4
+);
+
+scene.add(mark);
+}
+
+
+// ---------- Warning blocks near pier ----------
+const v4fixWarningMat =
+new THREE.MeshStandardMaterial({
+color: 0xb18b42,
+roughness: 0.8
+});
+
+for (let i = 0; i < 8; i++) {
+
+const warning = box(
+0.7,
+0.12,
+0.35,
+v4fixWarningMat
+);
+
+warning.position.set(
+-5.0 + i * 1.4,
+0.08,
+-74
+);
+
+scene.add(warning);
+}
+
+
+// ---------- Road-facing building windows ----------
+addV4FixWindows(-16.5, -30, "left");
+addV4FixWindows(16.5, -30, "right");
+
+addV4FixWindows(-16.5, -58, "left");
+addV4FixWindows(16.5, -58, "right");
+
+
+// ---------- Extra pier lights ----------
+const v4fixLampMat =
+new THREE.MeshStandardMaterial({
+color: 0x303638,
+roughness: 0.8,
+metalness: 0.35
+});
+
+for (const x of [-8, 8]) {
+
+const pole = box(
+0.18,
+4.2,
+0.18,
+v4fixLampMat
+);
+
+pole.position.set(
+x,
+2.1,
+-48
+);
+
+scene.add(pole);
+
+const lamp = new THREE.Mesh(
+new THREE.SphereGeometry(
+0.28,
+12,
+12
+),
+new THREE.MeshStandardMaterial({
+color: 0xd9d1a2,
+emissive: 0x665f42,
+emissiveIntensity: 0.8
+})
+);
+
+lamp.position.set(
+x,
+4.3,
+-48
+);
+
+scene.add(lamp);
+}
+
+
+// ================================
+// END V4.1 VISIBILITY FIX
+// ================================
+
 // ========================================
 // GAME VARIABLES
 // ========================================
