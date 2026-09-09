@@ -451,6 +451,343 @@ sea.position.set(
 
 scene.add(sea);
 
+// =====================================
+// TUEN MUN PIER - WATERFRONT V2
+// =====================================
+
+// -------------------------------
+// 碼頭地面
+// -------------------------------
+
+const pierMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x777a76,
+roughness: 0.85
+});
+
+box(
+0,
+0.05,
+-92,
+24,
+0.25,
+20,
+pierMaterial
+);
+
+// -------------------------------
+// 海旁欄杆
+// -------------------------------
+
+const railingMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x555b59,
+metalness: 0.6,
+roughness: 0.6
+});
+
+function railing(
+x,
+z
+) {
+
+// 垂直柱
+
+box(
+x,
+1.0,
+z,
+0.12,
+2,
+0.12,
+railingMaterial
+);
+
+// 上橫杆
+
+box(
+x,
+1.75,
+z,
+0.12,
+0.12,
+4,
+railingMaterial
+);
+
+// 中間橫杆
+
+box(
+x,
+1.0,
+z,
+0.08,
+0.08,
+4,
+railingMaterial
+);
+}
+
+for (
+let i = 0;
+i < 7;
+i++
+) {
+
+railing(
+-11,
+-82 - i * 3
+);
+
+railing(
+11,
+-82 - i * 3
+);
+}
+
+// -------------------------------
+// 碼頭邊緣
+// -------------------------------
+
+const pierEdgeMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x454b49,
+roughness: 0.8
+});
+
+box(
+0,
+0.25,
+-103,
+24,
+0.5,
+0.5,
+pierEdgeMaterial
+);
+
+// -------------------------------
+// 海面浮標
+// -------------------------------
+
+const buoyMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x8b7560,
+roughness: 0.7
+});
+
+function createBuoy(
+x,
+z
+) {
+
+const buoy =
+new THREE.Mesh(
+new THREE.SphereGeometry(
+0.45,
+12,
+12
+),
+buoyMaterial
+);
+
+buoy.position.set(
+x,
+0.1,
+z
+);
+
+scene.add(buoy);
+}
+
+createBuoy(
+-8,
+-108
+);
+
+createBuoy(
+7,
+-111
+);
+
+createBuoy(
+-3,
+-116
+);
+
+// -------------------------------
+// 碼頭路燈
+// -------------------------------
+
+const lampPoleMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x3d4442,
+metalness: 0.5,
+roughness: 0.6
+});
+
+function pierLamp(
+x,
+z
+) {
+
+box(
+x,
+3,
+z,
+0.15,
+6,
+0.15,
+lampPoleMaterial
+);
+
+const lamp =
+new THREE.PointLight(
+0xffefd0,
+1.2,
+14
+);
+
+lamp.position.set(
+x,
+6,
+z
+);
+
+scene.add(lamp);
+}
+
+pierLamp(
+-9,
+-78
+);
+
+pierLamp(
+9,
+-90
+);
+
+pierLamp(
+-9,
+-102
+);
+
+pierLamp(
+9,
+-106
+);
+
+// -------------------------------
+// 香港式路牌
+// -------------------------------
+
+const signMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x444947,
+roughness: 0.8
+});
+
+function createStreetSign(
+x,
+z
+) {
+
+box(
+x,
+2.3,
+z,
+0.12,
+4.6,
+0.12,
+signMaterial
+);
+
+
+box(
+x,
+4.3,
+z,
+2.6,
+0.65,
+0.12,
+signMaterial
+);
+}
+
+createStreetSign(
+-5,
+-74
+);
+
+// -------------------------------
+// 廢棄垃圾桶
+// -------------------------------
+
+const binMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x414746,
+roughness: 0.9
+});
+
+function createBin(
+x,
+z
+) {
+
+const bin =
+new THREE.Mesh(
+new THREE.CylinderGeometry(
+0.45,
+0.4,
+1,
+12
+),
+binMaterial
+);
+
+bin.position.set(
+x,
+0.5,
+z
+);
+
+scene.add(bin);
+}
+
+
+createBin(
+5,
+-76
+);
+
+createBin(
+-6,
+-94
+);
+
+// -------------------------------
+// 海旁雜物
+// -------------------------------
+
+for (
+let i = 0;
+i < 18;
+i++
+) {
+
+const object =
+box(
+(Math.random() - 0.5) * 20,
+0.25,
+-75 - Math.random() * 30,
+0.3 + Math.random() * 0.5,
+0.3 + Math.random() * 0.3,
+0.3 + Math.random() * 0.6,
+metalMaterial
+);
+
+object.rotation.y =
+Math.random() * Math.PI;
+}
 
 // ================================
 // STORY UI
@@ -524,7 +861,6 @@ mission.innerText =
 document.body.appendChild(
 mission
 );
-
 
 // ================================
 // GAME START
