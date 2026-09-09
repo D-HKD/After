@@ -2740,6 +2740,98 @@ scene.add(v44Haze);
 // END V4.4 REALISTIC SKY SYSTEM
 // ================================
 
+// ================================
+// V4.4 CLEANUP
+// Remove problematic sky objects
+// ================================
+
+// Remove the V4.4 sky sphere
+if (typeof v44Sky !== "undefined") {
+v44Sky.visible = false;
+}
+
+
+// Remove the V4.4 fake sun
+if (typeof v44Sun !== "undefined") {
+v44Sun.visible = false;
+}
+
+
+// Remove V4.4 cloud sprites
+scene.traverse(function(object) {
+
+if (!object.isSprite) return;
+
+// V4.4 clouds are high above the city
+if (object.position.y > 20) {
+object.visible = false;
+}
+});
+
+
+// Remove V4.4 white haze
+if (typeof v44Haze !== "undefined") {
+v44Haze.visible = false;
+}
+
+
+// Remove yellow floating sphere objects
+// but keep green tree objects.
+
+scene.traverse(function(object) {
+
+if (!object.isMesh) return;
+
+if (
+!object.geometry ||
+object.geometry.type !== "SphereGeometry"
+) {
+return;
+}
+
+if (!object.material) return;
+
+const material =
+Array.isArray(object.material)
+? object.material[0]
+: object.material;
+
+if (!material.color) return;
+
+const r = material.color.r;
+const g = material.color.g;
+const b = material.color.b;
+
+// Detect yellow/golden objects
+if (
+r > 0.65 &&
+g > 0.50 &&
+b < 0.40 &&
+r > b * 1.5
+) {
+object.visible = false;
+}
+});
+
+
+// Keep a clean blue-grey sky background
+scene.background =
+new THREE.Color(0x8fb1c4);
+
+
+// Keep a gentle atmospheric fog
+scene.fog =
+new THREE.Fog(
+0x8fb1c4,
+70,
+220
+);
+
+
+// ================================
+// END V4.4 CLEANUP
+// ================================
+
 // ========================================
 // GAME VARIABLES
 // ========================================
