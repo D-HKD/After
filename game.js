@@ -4568,8 +4568,6 @@ requestAnimationFrame(
 animate
 );
 
-updateV45Sky();  
-
 const now =
 performance.now();
 
