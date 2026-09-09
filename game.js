@@ -2404,6 +2404,342 @@ object.visible = false;
 // END V4.3 SCENE CLEANUP - CORRECTED
 // ================================
 
+// ================================
+// V4.4 REALISTIC SKY SYSTEM
+// ================================
+
+// ---------- Sky gradient ----------
+const v44SkyGeometry =
+new THREE.SphereGeometry(
+280,
+32,
+32
+);
+
+const v44SkyMaterial =
+new THREE.ShaderMaterial({
+
+side: THREE.BackSide,
+
+uniforms: {
+topColor: {
+value: new THREE.Color(0x5d8fb5)
+},
+
+bottomColor: {
+value: new THREE.Color(0xd7e3e5)
+},
+
+offset: {
+value: 25
+},
+
+exponent: {
+value: 0.55
+}
+},
+
+vertexShader: `
+varying vec3 vWorldPosition;
+
+void main() {
+
+vec4 worldPosition =
+modelMatrix *
+vec4(position, 1.0);
+
+vWorldPosition =
+worldPosition.xyz;
+
+gl_Position =
+projectionMatrix *
+modelViewMatrix *
+vec4(position, 1.0);
+}
+`,
+
+fragmentShader: `
+uniform vec3 topColor;
+uniform vec3 bottomColor;
+uniform float offset;
+uniform float exponent;
+
+varying vec3 vWorldPosition;
+
+void main() {
+
+float h =
+normalize(vWorldPosition + offset).y;
+
+float mixValue =
+max(
+pow(
+max(h, 0.0),
+exponent
+),
+0.0
+);
+
+gl_FragColor =
+vec4(
+mix(
+bottomColor,
+topColor,
+mixValue
+),
+1.0
+);
+}
+`
+});
+
+const v44Sky =
+new THREE.Mesh(
+v44SkyGeometry,
+v44SkyMaterial
+);
+
+v44Sky.position.set(
+0,
+0,
+0
+);
+
+scene.add(v44Sky);
+
+
+// ---------- Atmospheric fog ----------
+scene.background =
+new THREE.Color(0x9bb8c8);
+
+scene.fog =
+new THREE.Fog(
+0x9bb8c8,
+55,
+210
+);
+
+
+// ---------- Soft sunlight ----------
+const v44SunLight =
+new THREE.DirectionalLight(
+0xfff4dc,
+1.25
+);
+
+v44SunLight.position.set(
+-60,
+80,
+40
+);
+
+v44SunLight.castShadow = true;
+
+scene.add(v44SunLight);
+
+
+// ---------- Soft ambient light ----------
+const v44Ambient =
+new THREE.HemisphereLight(
+0xb8d5e6,
+0x5c615d,
+1.15
+);
+
+scene.add(v44Ambient);
+
+
+// ---------- Sun disc ----------
+const v44SunMaterial =
+new THREE.MeshBasicMaterial({
+color: 0xfff1b8
+});
+
+const v44Sun =
+new THREE.Mesh(
+new THREE.SphereGeometry(
+5,
+24,
+24
+),
+v44SunMaterial
+);
+
+v44Sun.position.set(
+-75,
+65,
+-130
+);
+
+scene.add(v44Sun);
+
+
+// ---------- Cloud texture ----------
+function createV44CloudTexture() {
+
+const canvas =
+document.createElement("canvas");
+
+canvas.width = 512;
+canvas.height = 256;
+
+const ctx =
+canvas.getContext("2d");
+
+ctx.clearRect(
+0,
+0,
+canvas.width,
+canvas.height
+);
+
+ctx.fillStyle =
+"rgba(255,255,255,0.82)";
+
+const clouds = [
+[130, 135, 75],
+[190, 115, 90],
+[255, 135, 70],
+[325, 125, 95],
+[390, 145, 65]
+];
+
+for (const cloud of clouds) {
+
+ctx.beginPath();
+
+ctx.arc(
+cloud[0],
+cloud[1],
+cloud[2],
+0,
+Math.PI * 2
+);
+
+ctx.fill();
+}
+
+return new THREE.CanvasTexture(
+canvas
+);
+}
+
+
+// ---------- Clouds ----------
+const v44CloudTexture =
+createV44CloudTexture();
+
+const v44CloudMaterial =
+new THREE.SpriteMaterial({
+map: v44CloudTexture,
+transparent: true,
+depthWrite: false,
+opacity: 0.72
+});
+
+
+function addV44Cloud(
+x,
+y,
+z,
+scaleX,
+scaleY
+) {
+
+const cloud =
+new THREE.Sprite(
+v44CloudMaterial.clone()
+);
+
+cloud.position.set(
+x,
+y,
+z
+);
+
+cloud.scale.set(
+scaleX,
+scaleY,
+1
+);
+
+scene.add(cloud);
+}
+
+
+// distant clouds
+addV44Cloud(
+-55,
+35,
+-120,
+32,
+13
+);
+
+addV44Cloud(
+45,
+40,
+-150,
+40,
+15
+);
+
+addV44Cloud(
+-10,
+48,
+-190,
+48,
+17
+);
+
+addV44Cloud(
+75,
+32,
+-100,
+28,
+11
+);
+
+addV44Cloud(
+-85,
+45,
+-180,
+38,
+14
+);
+
+
+// ---------- Light cloud haze ----------
+const v44HazeMaterial =
+new THREE.MeshBasicMaterial({
+color: 0xdce8ea,
+transparent: true,
+opacity: 0.12,
+depthWrite: false
+});
+
+const v44Haze =
+new THREE.Mesh(
+new THREE.PlaneGeometry(
+180,
+45
+),
+v44HazeMaterial
+);
+
+v44Haze.position.set(
+0,
+18,
+-120
+);
+
+scene.add(v44Haze);
+
+
+// ================================
+// END V4.4 REALISTIC SKY SYSTEM
+// ================================
+
 // ========================================
 // GAME VARIABLES
 // ========================================
