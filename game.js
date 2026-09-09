@@ -1137,3 +1137,25 @@ window.innerHeight
 );
 }
 );
+
+const startButton =
+document.getElementById("startButton");
+
+const startScreen =
+document.getElementById("startScreen");
+
+startButton.addEventListener(
+"click",
+function() {
+
+startScreen.style.display =
+"none";
+
+say(
+"Amy：五年了……我終於再次回到屯門碼頭。"
+);
+
+objective.innerText =
+"目標：探索屯門碼頭";
+}
+);
