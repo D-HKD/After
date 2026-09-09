@@ -3120,6 +3120,286 @@ performance.now();
 // END V4.5 REALISTIC PROCEDURAL SKY
 // ================================
 
+// ================================
+// V4.5.1 REAL SKY BACKGROUND
+// ================================
+
+if (typeof v45Sky !== "undefined") {
+v45Sky.visible = false;
+}
+
+
+// Create a high-resolution sky image
+const v451Canvas =
+document.createElement("canvas");
+
+v451Canvas.width = 2048;
+v451Canvas.height = 1024;
+
+const v451Ctx =
+v451Canvas.getContext("2d");
+
+
+// ---------- Sky gradient ----------
+
+const v451Gradient =
+v451Ctx.createLinearGradient(
+0,
+0,
+0,
+1024
+);
+
+v451Gradient.addColorStop(
+0,
+"#3d78aa"
+);
+
+v451Gradient.addColorStop(
+0.35,
+"#6fa1c3"
+);
+
+v451Gradient.addColorStop(
+0.68,
+"#a9c5d0"
+);
+
+v451Gradient.addColorStop(
+1,
+"#d5dedf"
+);
+
+v451Ctx.fillStyle =
+v451Gradient;
+
+v451Ctx.fillRect(
+0,
+0,
+2048,
+1024
+);
+
+
+// ---------- Soft cloud layer ----------
+
+function drawV451Cloud(
+x,
+y,
+width,
+height,
+opacity
+) {
+
+const gradient =
+v451Ctx.createRadialGradient(
+x,
+y,
+width * 0.05,
+x,
+y,
+width
+);
+
+gradient.addColorStop(
+0,
+`rgba(255,255,255,${opacity})`
+);
+
+gradient.addColorStop(
+0.45,
+`rgba(245,250,250,${opacity * 0.75})`
+);
+
+gradient.addColorStop(
+1,
+"rgba(255,255,255,0)"
+);
+
+v451Ctx.fillStyle =
+gradient;
+
+v451Ctx.beginPath();
+
+v451Ctx.ellipse(
+x,
+y,
+width,
+height,
+0,
+0,
+Math.PI * 2
+);
+
+v451Ctx.fill();
+}
+
+
+// Large distant clouds
+
+drawV451Cloud(
+280,
+230,
+260,
+85,
+0.65
+);
+
+drawV451Cloud(
+470,
+250,
+300,
+100,
+0.55
+);
+
+drawV451Cloud(
+760,
+190,
+230,
+75,
+0.58
+);
+
+drawV451Cloud(
+1050,
+260,
+330,
+95,
+0.60
+);
+
+drawV451Cloud(
+1380,
+210,
+280,
+85,
+0.55
+);
+
+drawV451Cloud(
+1710,
+275,
+330,
+100,
+0.62
+);
+
+
+// Smaller broken clouds
+
+drawV451Cloud(
+180,
+370,
+180,
+55,
+0.42
+);
+
+drawV451Cloud(
+610,
+340,
+210,
+65,
+0.38
+);
+
+drawV451Cloud(
+920,
+380,
+190,
+58,
+0.40
+);
+
+drawV451Cloud(
+1290,
+350,
+240,
+65,
+0.42
+);
+
+drawV451Cloud(
+1600,
+390,
+210,
+60,
+0.40
+);
+
+
+// ---------- Thin atmospheric cloud band ----------
+
+const v451HorizonGradient =
+v451Ctx.createLinearGradient(
+0,
+470,
+0,
+650
+);
+
+v451HorizonGradient.addColorStop(
+0,
+"rgba(255,255,255,0)"
+);
+
+v451HorizonGradient.addColorStop(
+0.5,
+"rgba(235,242,243,0.22)"
+);
+
+v451HorizonGradient.addColorStop(
+1,
+"rgba(220,230,232,0.42)"
+);
+
+v451Ctx.fillStyle =
+v451HorizonGradient;
+
+v451Ctx.fillRect(
+0,
+430,
+2048,
+240
+);
+
+
+// ---------- Create texture ----------
+
+const v451SkyTexture =
+new THREE.CanvasTexture(
+v451Canvas
+);
+
+v451SkyTexture.colorSpace =
+THREE.SRGBColorSpace;
+
+v451SkyTexture.needsUpdate =
+true;
+
+
+// ---------- Apply to scene ----------
+
+scene.background =
+v451SkyTexture;
+
+
+// ---------- Atmospheric fog ----------
+
+scene.fog =
+new THREE.Fog(
+0xa9c5d0,
+75,
+230
+);
+
+
+// ================================
+// END V4.5.1 REAL SKY BACKGROUND
+// ================================
+
+
 // ========================================
 // GAME VARIABLES
 // ========================================
