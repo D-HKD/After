@@ -853,6 +853,682 @@ scene.add(
 particles
 );
 
+// ========================================
+// TUEN MUN PIER REALISTIC DETAILS V4
+// ========================================
+
+
+// ========================================
+// BUILDING WINDOWS
+// ========================================
+
+const windowMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x273231,
+roughness: 0.45,
+metalness: 0.15
+});
+
+
+const brokenWindowMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x4b5552,
+roughness: 0.8
+});
+
+
+function createBuildingWindows(
+x,
+y,
+z,
+width,
+height,
+depth
+) {
+
+const rows = 5;
+const columns = 3;
+
+const windowWidth =
+1.3;
+
+const windowHeight =
+1.4;
+
+
+for (
+let row = 0;
+row < rows;
+row++
+) {
+
+for (
+let col = 0;
+col < columns;
+col++
+) {
+
+const wx =
+x -
+width / 2 +
+2 +
+col * 3;
+
+
+const wy =
+y -
+height / 2 +
+2 +
+row * 2;
+
+
+const window =
+box(
+wx,
+wy,
+z -
+depth / 2 -
+0.03,
+windowWidth,
+windowHeight,
+0.05,
+Math.random() > 0.18
+? windowMaterial
+: brokenWindowMaterial
+);
+
+
+window.userData.window =
+true;
+}
+}
+}
+
+
+// ========================================
+// WINDOWS ON BUILDINGS
+// ========================================
+
+createBuildingWindows(
+-22,
+5,
+-5,
+11,
+10,
+13
+);
+
+
+createBuildingWindows(
+22,
+6,
+-10,
+11,
+12,
+14
+);
+
+
+createBuildingWindows(
+-22,
+5,
+-22,
+11,
+10,
+13
+);
+
+
+createBuildingWindows(
+22,
+6,
+-27,
+11,
+12,
+14
+);
+
+
+createBuildingWindows(
+-22,
+5,
+-39,
+11,
+10,
+13
+);
+
+
+createBuildingWindows(
+22,
+6,
+-44,
+11,
+12,
+14
+);
+
+
+// ========================================
+// ROAD MARKINGS
+// ========================================
+
+const roadLineMaterial =
+new THREE.MeshBasicMaterial({
+color: 0xd6d0b2
+});
+
+
+for (
+let i = 0;
+i < 15;
+i++
+) {
+
+box(
+0,
+0.015,
+-5 - i * 7,
+0.25,
+0.025,
+3.5,
+roadLineMaterial
+);
+}
+
+
+// ========================================
+// ROAD EDGE LINES
+// ========================================
+
+box(
+-10,
+0.018,
+-40,
+0.15,
+0.025,
+105,
+roadLineMaterial
+);
+
+
+box(
+10,
+0.018,
+-40,
+0.15,
+0.025,
+105,
+roadLineMaterial
+);
+
+
+// ========================================
+// PIER SAFETY BARRIERS
+// ========================================
+
+const barrierMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x6b706d,
+metalness: 0.65,
+roughness: 0.55
+});
+
+
+function createBarrier(
+x,
+z
+) {
+
+box(
+x,
+0.7,
+z,
+0.18,
+1.4,
+2.5,
+barrierMaterial
+);
+
+
+box(
+x,
+1.3,
+z,
+0.18,
+0.12,
+2.5,
+barrierMaterial
+);
+}
+
+
+for (
+let i = 0;
+i < 8;
+i++
+) {
+
+createBarrier(
+-11,
+-82 - i * 2.5
+);
+
+createBarrier(
+11,
+-82 - i * 2.5
+);
+}
+
+
+// ========================================
+// TUEN MUN PIER SIGN
+// ========================================
+
+const signCanvas =
+document.createElement("canvas");
+
+
+signCanvas.width = 1024;
+
+signCanvas.height = 256;
+
+
+const signContext =
+signCanvas.getContext("2d");
+
+
+signContext.fillStyle =
+"#263331";
+
+
+signContext.fillRect(
+0,
+0,
+1024,
+256
+);
+
+
+signContext.fillStyle =
+"#f0ead1";
+
+
+signContext.font =
+"bold 92px sans-serif";
+
+
+signContext.textAlign =
+"center";
+
+
+signContext.textBaseline =
+"middle";
+
+
+signContext.fillText(
+"屯門碼頭",
+512,
+115
+);
+
+
+signContext.font =
+"bold 42px sans-serif";
+
+
+signContext.fillText(
+"TUEN MUN PIER",
+512,
+190
+);
+
+
+const signTexture =
+new THREE.CanvasTexture(
+signCanvas
+);
+
+
+const signMaterial =
+new THREE.MeshStandardMaterial({
+map: signTexture,
+roughness: 0.65
+});
+
+
+const pierSign =
+new THREE.Mesh(
+new THREE.BoxGeometry(
+5.5,
+1.6,
+0.15
+),
+signMaterial
+);
+
+
+pierSign.position.set(
+0,
+4.2,
+-76
+);
+
+
+scene.add(
+pierSign
+);
+
+
+// ========================================
+// SIGN SUPPORT
+// ========================================
+
+box(
+-2.3,
+2.1,
+-76,
+0.2,
+4.2,
+0.2,
+metalMaterial
+);
+
+
+box(
+2.3,
+2.1,
+-76,
+0.2,
+4.2,
+0.2,
+metalMaterial
+);
+
+
+// ========================================
+// PIER INDUSTRIAL CONTAINERS
+// ========================================
+
+const containerMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x505754,
+roughness: 0.9
+});
+
+
+function createContainer(
+x,
+z,
+rotation
+) {
+
+const container =
+box(
+x,
+1.2,
+z,
+4.5,
+2.4,
+9,
+containerMaterial
+);
+
+
+container.rotation.y =
+rotation;
+
+
+// Container vertical ribs
+
+for (
+let i = -3;
+i <= 3;
+i++
+) {
+
+const rib =
+box(
+x,
+1.2,
+z +
+i * 1.1,
+0.08,
+2.5,
+0.08,
+metalMaterial
+);
+
+
+rib.rotation.y =
+rotation;
+}
+}
+
+
+createContainer(
+-7,
+-65,
+0.05
+);
+
+
+createContainer(
+7,
+-69,
+-0.08
+);
+
+
+// ========================================
+// WHEEL / RUBBER DEBRIS
+// ========================================
+
+const rubberMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x202523,
+roughness: 1
+});
+
+
+function createTire(
+x,
+z
+) {
+
+const tire =
+new THREE.Mesh(
+new THREE.TorusGeometry(
+0.55,
+0.2,
+10,
+18
+),
+rubberMaterial
+);
+
+
+tire.rotation.x =
+Math.PI / 2;
+
+
+tire.position.set(
+x,
+0.55,
+z
+);
+
+
+scene.add(
+tire
+);
+}
+
+
+createTire(
+-3,
+-71
+);
+
+
+createTire(
+4,
+-91
+);
+
+
+// ========================================
+// PIER WARNING STRIP
+// ========================================
+
+const warningMaterial =
+new THREE.MeshBasicMaterial({
+color: 0xb49b52
+});
+
+
+box(
+0,
+0.32,
+-101.5,
+23,
+0.04,
+0.25,
+warningMaterial
+);
+
+
+// ========================================
+// SEA WALL
+// ========================================
+
+const seaWallMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x626866,
+roughness: 1
+});
+
+
+box(
+0,
+0.8,
+-104,
+24,
+1.6,
+1.2,
+seaWallMaterial
+);
+
+
+// ========================================
+// EXTRA VEGETATION
+// ========================================
+
+for (
+let i = 0;
+i < 25;
+i++
+) {
+
+const side =
+Math.random() > 0.5
+? -1
+: 1;
+
+
+const x =
+side *
+(
+12 +
+Math.random() * 6
+);
+
+
+const z =
+-20 -
+Math.random() * 75;
+
+
+const bush =
+new THREE.Mesh(
+new THREE.SphereGeometry(
+0.7 +
+Math.random() * 0.7,
+8,
+8
+),
+greenMaterial
+);
+
+
+bush.scale.y =
+0.7;
+
+
+bush.position.set(
+x,
+0.7,
+z
+);
+
+
+scene.add(
+bush
+);
+}
+
+
+// ========================================
+// SMALL STREET LIGHT HEADS
+// ========================================
+
+const lampHeadMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x252b2a,
+metalness: 0.5,
+roughness: 0.5
+});
+
+
+function createLampHead(
+x,
+z
+) {
+
+box(
+x,
+6,
+z,
+0.7,
+0.2,
+0.35,
+lampHeadMaterial
+);
+}
+
+
+createLampHead(
+-9,
+-78
+);
+
+
+createLampHead(
+9,
+-90
+);
+
+
+createLampHead(
+-9,
+-102
+);
+
+
+createLampHead(
+9,
+-106
+);
 
 // ========================================
 // GAME VARIABLES
