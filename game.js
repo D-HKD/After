@@ -868,6 +868,356 @@ let danielFound = false;
 
 let endingStarted = false;
 
+// ========================================
+// AUDIO SYSTEM
+// ========================================
+
+let audioContext = null;
+
+let masterGain = null;
+
+let windGain = null;
+
+let oceanGain = null;
+
+let radioGain = null;
+
+let audioStarted = false;
+
+let lastStepTime = 0;
+
+
+// 建立遊戲聲音系統
+
+function startAudio() {
+
+if (audioStarted)
+return;
+
+audioStarted = true;
+
+audioContext =
+new (
+window.AudioContext ||
+window.webkitAudioContext
+)();
+
+masterGain =
+audioContext.createGain();
+
+masterGain.gain.value =
+0.45;
+
+masterGain.connect(
+audioContext.destination
+);
+
+
+// -------------------------
+// 海浪聲
+// -------------------------
+
+const ocean =
+audioContext.createOscillator();
+
+ocean.type =
+"sine";
+
+ocean.frequency.value =
+75;
+
+
+oceanGain =
+audioContext.createGain();
+
+oceanGain.gain.value =
+0.035;
+
+
+ocean.connect(
+oceanGain
+);
+
+oceanGain.connect(
+masterGain
+);
+
+ocean.start();
+
+
+// -------------------------
+// 風聲
+// -------------------------
+
+const wind =
+audioContext.createOscillator();
+
+wind.type =
+"sine";
+
+wind.frequency.value =
+180;
+
+
+windGain =
+audioContext.createGain();
+
+windGain.gain.value =
+0.018;
+
+
+wind.connect(
+windGain
+);
+
+windGain.connect(
+masterGain
+);
+
+wind.start();
+
+
+// -------------------------
+// 啟動音效
+// -------------------------
+
+const startOsc =
+audioContext.createOscillator();
+
+const startGain =
+audioContext.createGain();
+
+
+startOsc.frequency.value =
+440;
+
+startGain.gain.value =
+0.001;
+
+
+startOsc.connect(
+startGain
+);
+
+startGain.connect(
+masterGain
+);
+
+
+startOsc.start();
+
+
+startGain.gain.exponentialRampToValueAtTime(
+0.12,
+audioContext.currentTime + 0.05
+);
+
+
+startGain.gain.exponentialRampToValueAtTime(
+0.001,
+audioContext.currentTime + 1
+);
+
+
+setTimeout(
+function() {
+
+startOsc.stop();
+
+},
+1100
+);
+}
+
+
+// ========================================
+// FOOTSTEP SOUND
+// ========================================
+
+function footstep() {
+
+if (
+!audioStarted ||
+!audioContext
+)
+return;
+
+
+const osc =
+audioContext.createOscillator();
+
+
+const gain =
+audioContext.createGain();
+
+
+osc.type =
+"triangle";
+
+
+osc.frequency.value =
+80 +
+Math.random() * 35;
+
+
+gain.gain.value =
+0.001;
+
+
+osc.connect(
+gain
+);
+
+
+gain.connect(
+masterGain
+);
+
+
+const now =
+audioContext.currentTime;
+
+
+gain.gain.exponentialRampToValueAtTime(
+0.08,
+now + 0.01
+);
+
+
+gain.gain.exponentialRampToValueAtTime(
+0.001,
+now + 0.12
+);
+
+
+osc.start(now);
+
+osc.stop(
+now + 0.13
+);
+}
+
+
+// ========================================
+// RADIO STATIC
+// ========================================
+
+function radioStatic() {
+
+if (
+!audioStarted ||
+!audioContext
+)
+return;
+
+
+const buffer =
+audioContext.createBuffer(
+1,
+audioContext.sampleRate * 0.15,
+audioContext.sampleRate
+);
+
+
+const data =
+buffer.getChannelData(0);
+
+
+for (
+let i = 0;
+i < data.length;
+i++
+) {
+
+data[i] =
+Math.random() * 2 - 1;
+}
+
+
+const noise =
+audioContext.createBufferSource();
+
+
+noise.buffer =
+buffer;
+
+
+radioGain =
+audioContext.createGain();
+
+
+radioGain.gain.value =
+0.12;
+
+
+noise.connect(
+radioGain
+);
+
+
+radioGain.connect(
+masterGain
+);
+
+
+noise.start();
+}
+
+
+// ========================================
+// WATERFRONT SOUND UPDATE
+// ========================================
+
+function updateAudio() {
+
+if (
+!audioStarted ||
+!audioContext
+)
+return;
+
+
+const distanceToSea =
+Math.abs(
+camera.position.z + 105
+);
+
+
+// 越接近海，海浪越大
+
+const oceanVolume =
+Math.max(
+0.025,
+Math.min(
+0.12,
+0.12 -
+distanceToSea *
+0.0008
+)
+);
+
+
+oceanGain.gain.value =
+oceanVolume;
+
+
+// 風聲根據玩家移動稍微變化
+
+const movementAmount =
+(
+Math.abs(
+camera.position.x
+) +
+Math.abs(
+camera.position.z
+)
+) * 0.00002;
+
+
+windGain.gain.value =
+0.018 +
+movementAmount;
+}
 
 // ========================================
 // PLAYER CONTROL
@@ -1279,6 +1629,8 @@ function() {
 
 started = true;
 
+startAudio();
+
 startScreen.style.display =
 "none";
 
@@ -1304,7 +1656,24 @@ delta
 
 if (!started)
 return;
+  
+const moving =
+keys.w ||
+keys.s ||
+keys.a ||
+keys.d ||
+mobileForward;
 
+if (
+moving &&
+performance.now() - lastStepTime > 450
+) {
+
+footstep();
+
+lastStepTime =
+performance.now();
+}
 
 let forward = 0;
 
@@ -1428,6 +1797,7 @@ z < -45 &&
 
 radioFound = true;
 
+radioStatic();  
 
 objective.innerText =
 "目標：調查神秘收音機";
@@ -1678,6 +2048,7 @@ updateCamera();
 
 checkStory();
 
+updateAudio();  
 
 // 海面輕微上下
 
