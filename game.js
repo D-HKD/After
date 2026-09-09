@@ -701,7 +701,6 @@ z,
 signMaterial
 );
 
-
 box(
 x,
 4.3,
@@ -753,7 +752,6 @@ z
 scene.add(bin);
 }
 
-
 createBin(
 5,
 -76
@@ -787,6 +785,232 @@ metalMaterial
 
 object.rotation.y =
 Math.random() * Math.PI;
+}
+
+// =====================================
+// TUEN MUN PIER - ATMOSPHERE V2.2
+// =====================================
+
+// -------------------------------
+// 海面動畫
+// -------------------------------
+
+const waterBaseY = sea.position.y;
+
+let waterTime = 0;
+
+// -------------------------------
+// 空氣粒子
+// -------------------------------
+
+const particleGeometry =
+new THREE.BufferGeometry();
+
+const particleCount = 700;
+
+const particlePositions =
+new Float32Array(
+particleCount * 3
+);
+
+for (
+let i = 0;
+i < particleCount;
+i++
+) {
+
+particlePositions[i * 3] =
+(Math.random() - 0.5) * 45;
+
+particlePositions[i * 3 + 1] =
+Math.random() * 10;
+
+particlePositions[i * 3 + 2] =
+-Math.random() * 110;
+}
+
+particleGeometry.setAttribute(
+"position",
+new THREE.BufferAttribute(
+particlePositions,
+3
+)
+);
+
+const particleMaterial =
+new THREE.PointsMaterial({
+color: 0xdfe7e5,
+size: 0.08,
+transparent: true,
+opacity: 0.28
+});
+
+const particles =
+new THREE.Points(
+particleGeometry,
+particleMaterial
+);
+
+scene.add(particles);
+
+// -------------------------------
+// 遠處霧層
+// -------------------------------
+
+const mistMaterial =
+new THREE.MeshBasicMaterial({
+color: 0xd5dddd,
+transparent: true,
+opacity: 0.10,
+depthWrite: false
+});
+
+for (
+let i = 0;
+i < 7;
+i++
+) {
+
+const mist =
+new THREE.Mesh(
+new THREE.PlaneGeometry(
+30,
+8
+),
+mistMaterial
+);
+
+mist.position.set(
+(Math.random() - 0.5) * 25,
+2 + Math.random() * 3,
+-35 - i * 12
+);
+
+mist.rotation.y =
+Math.PI;
+
+scene.add(mist);
+}
+
+// -------------------------------
+// 廢棄警示燈
+// -------------------------------
+
+const warningMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x2d3231,
+roughness: 0.8
+});
+
+function warningLight(
+x,
+z
+) {
+
+box(
+x,
+2.2,
+z,
+0.15,
+4.4,
+0.15,
+warningMaterial
+);
+
+const light =
+new THREE.PointLight(
+0xb66f55,
+0.7,
+9
+);
+
+light.position.set(
+x,
+4.4,
+z
+);
+
+scene.add(light);
+}
+
+warningLight(
+-10,
+-84
+);
+
+warningLight(
+10,
+-96
+);
+
+// -------------------------------
+// 海邊混凝土柱
+// -------------------------------
+
+const seawallMaterial =
+new THREE.MeshStandardMaterial({
+color: 0x686d6a,
+roughness: 0.95
+});
+
+for (
+let i = 0;
+i < 8;
+i++
+) {
+
+box(
+-10.5,
+0.7,
+-80 - i * 3,
+0.5,
+1.4,
+0.5,
+seawallMaterial
+);
+
+box(
+10.5,
+0.7,
+-80 - i * 3,
+0.5,
+1.4,
+0.5,
+seawallMaterial
+);
+}
+
+// -------------------------------
+// 風中漂浮垃圾
+// -------------------------------
+
+const floatingObjects = [];
+
+for (
+let i = 0;
+i < 20;
+i++
+) {
+
+const piece =
+box(
+(Math.random() - 0.5) * 24,
+0.4 + Math.random() * 2,
+-20 - Math.random() * 85,
+0.12,
+0.12,
+0.4,
+metalMaterial
+);
+
+floatingObjects.push({
+object: piece,
+speed:
+0.3 +
+Math.random() * 0.6,
+offset:
+Math.random() * Math.PI * 2
+});
 }
 
 // ================================
@@ -1455,10 +1679,45 @@ requestAnimationFrame(
 gameLoop
 );
 
+// -------------------------------
+// 環境動畫
+// -------------------------------
+
+waterTime += delta;
+
+sea.position.y =
+waterBaseY +
+Math.sin(waterTime * 0.8) *
+0.025;
+
+// 空氣粒子慢慢移動
+
+particles.rotation.y +=
+delta * 0.008;
+
+// 漂浮物隨風移動
+
+for (
+const item of floatingObjects
+) {
+
+item.object.position.x +=
+item.speed * delta;
+
+item.object.rotation.y +=
+delta * 0.5;
+
+if (
+item.object.position.x > 14
+) {
+
+item.object.position.x =
+-14;
+}
+}
 
 const now =
 performance.now();
-
 
 const delta =
 Math.min(
