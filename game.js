@@ -27,7 +27,7 @@ const scene =
 new THREE.Scene();
 
 scene.background =
-new THREE.Color(0xb8c5c7);
+new THREE.Color(0x8fb1c4);
 
 scene.fog =
 new THREE.Fog(
@@ -3127,7 +3127,9 @@ performance.now();
 if (typeof v45Sky !== "undefined") {
 v45Sky.visible = false;
 }
-
+if (typeof v45Sky !== "undefined") {
+v45Sky.visible = true;
+}
 
 // Create a high-resolution sky image
 const v451Canvas =
@@ -4567,6 +4569,7 @@ function animate() {
 requestAnimationFrame(
 animate
 );
+updateV45Sky();
 
 const now =
 performance.now();
